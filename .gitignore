@@ -1,0 +1,31 @@
+# Dependencies
+node_modules/
+
+# Build output
+.next/
+out/
+build/
+dist/
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Environment
+.env
+.env*.local
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+
+# Microsoft Office temp / lock files
+~$*
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Claude local (machine-specific) settings
+.claude/settings.local.json
