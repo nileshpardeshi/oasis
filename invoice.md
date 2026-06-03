@@ -2,7 +2,7 @@
 ### Detailed Enterprise Design & Implementation Plan
 
 **Part of:** OASIS — Opus Administration & Service Intelligence Suite (see [implementation_plan.md](implementation_plan.md) §9 Module 5)
-**Version:** 1.2 (Draft for Review — E1–E7 design-review enhancements + scheduled vendor notifications F18) · **Date:** 2026-06-03 · **Status:** Pending stakeholder review
+**Version:** 1.3 (Draft for Review — adds Finance verification/approval workflow (F20), Reports module + scheduled report delivery (F19), invoice-level entity, batch & per-invoice edit/delete + bulk approval, original-invoice view/download (F5), and payment-priority capture) · **Date:** 2026-06-04 · **Status:** Pending stakeholder review
 **Stack (inherited):** Next.js + TypeScript (frontend) · Java 21 + Spring Boot 3 (core services) · Python + FastAPI (AI services) · PostgreSQL + Redis · Object storage · **Pluggable extraction engine — Azure AI Document Intelligence (default, tenant-bound/in-region/no-train) with a swappable on-prem option** (see §10.9)
 
 > This document is grounded in the real artifacts supplied in `Data/`: the billing MIS workbook, the finance payment-details email, the payment screenshot, and sample invoices.
@@ -100,8 +100,10 @@ flowchart TB
   GEN --> VAL[Validation & Compliance Gate - fields, GST, duplicate, vendor, fraud risk]
   VAL --> AP1{Cross-check & Approve}
   AP1 -->|Needs correction / Reject + comments| RV
-  AP1 -->|Approved| SF[Share with Finance: download Excel/PDF or push via API/email]
-  SF --> FP[Finance pays via existing payment portal]
+  AP1 -->|Approved| SF[Send to Finance: email batch details + status = Sent to Finance]
+  SF --> FREV{Finance verifies invoices in OASIS - F20}
+  FREV -->|Send back for correction| RV
+  FREV -->|Approve for Payment = Approved By Finance| FP[Finance pays via existing payment portal]
   FP --> PR[Finance Payment Report received - email/upload]
   PR --> REC[Reconciliation Agent: match by bill reference, handle TDS Dr/Cr, capture UTR]
   REC --> AP2{Review & Approve status update}
@@ -119,7 +121,7 @@ flowchart TB
 | **Admin – Invoice Processor** (Sandeep) | Upload invoices, review/confirm extraction, build billing batch, upload finance report, trigger notifications | Create/edit batches, run extraction & reconciliation |
 | **Admin – Approver / Checker** | Cross-check billing batch & reconciliation; approve/reject/return with comments | Approve/reject, comment |
 | **Admin Head / Manager** | Oversight, dashboards, escalations | Read-all, reports, config |
-| **Finance** (consumer) | Receive billing file, pay, send payment report | Read approved billing file; (optional) upload report |
+| **Finance** | Access the shared batch in OASIS; **verify each invoice** (incl. Payment Priority); **Approve for Payment** → **Approved By Finance**; **send back for correction** or **edit/correct** invoices; pay via the existing portal; send the payment report | Per-invoice & batch finance approval, send-back, edit; (optional) upload report |
 | **Vendor** (external) | Receives payment confirmation | None (notification recipient only) |
 | **System Admin** | Categories, templates, entities, RBAC, integrations | Configuration |
 
@@ -137,8 +139,8 @@ Every requested capability mapped to a feature ID (used across this doc):
 | **F2** | AI reads varying-format invoices, extracts only billing-sheet-required fields | §10.1, §7 |
 | **F3** | Show fetched data on screen; confirm per file before next; then generate billing file | §13.2 |
 | **F4** | Select invoice received date + paying company; **provision to add/manage paying entities** + free-text for ad-hoc | §7, §13.1, §13.9 |
-| **F5** | View/preview the originally uploaded invoice | §13.2 |
-| **F6** | Cross-check & approve billing file: tabular view + Approve / Reject / Needs-correction + comments | §13.3, §12 |
+| **F5** | View/preview **and download** the originally uploaded invoice (in review, and per invoice within a batch) | §13.2, §13.3 |
+| **F6** | Cross-check & approve: tabular view + Approve / Reject / Needs-correction + comments; **bulk multiselect** approve/reject; **edit/delete batch**; per-invoice **add / edit / reupload / delete** | §13.3, §12 |
 | **F7** | Download billing file as Excel **and** PDF | §13.3, §14 |
 | **F8** | Past records: monthwise, vendorwise | §13.4, §16 |
 | **F9** | Search panel: date range, vendor, payment status, bill no, UTR, category | §13.4, §14 |
@@ -151,6 +153,8 @@ Every requested capability mapped to a feature ID (used across this doc):
 | **F16** | Use AI agents wherever required | §10 |
 | **F17** | Reminders/alerts for due, overdue, new-due payments | §17 |
 | **F18** | Vendor notification in two modes — **(a) manual** trigger from UI and **(b) scheduled** (daily/weekly/monthly at a set time) scanning paid bills; an **"already notified" flag** prevents duplicate emails to the same vendor | §17, §11, §13.6 |
+| **F19** | **Reports module** — a report **library** (multiple report types with charts) + **scheduled email delivery** (daily/weekly/monthly at a set time, recipients, subject, report period = last N days; enable/edit/delete; delivery history) | §13.10, §16, §11, §14 |
+| **F20** | **Finance verification & approval workflow** — Finance accesses the shared batch, verifies invoices, **Approve for Payment** (per invoice + whole batch → status **Approved By Finance**), **send back for correction**, or **edit/correct** directly; reviews the **Payment Priority** column | §5, §4, §12, §13.3 |
 
 **Enhancements adopted from design review (E1–E7):**
 
@@ -185,7 +189,7 @@ Derived from `Data/billing sheet format/Billing MIS…xlsx` (*Base Sheet*). Thes
 | 11 | Bill Received date | `billReceivedDate` | User (F4) | Date invoice received |
 | 12 | Sent to Finance on | `sentToFinanceOn` | System | Set when batch shared |
 | 13 | Due Date | `dueDate` | Derived | From bill date + credit period & **payment cycle rule** |
-| 14 | Payment Cycle | `paymentCycle` | Derived | *"Due till 7th = Cycle I; till 22nd = Cycle II"* (configurable) |
+| 14 | Payment Cycle / **Payment Priority** | `paymentCycle` | Derived | **Priority I** if due ≤ 7th, **II** if ≤ 22nd (else next cycle); shown at upload, review & in the batch; configurable |
 | 15 | Payment Recd date / Paid on | `paymentDate` | Reconciliation | From finance report |
 | 16 | Cheque/NEFT No | `utrOrChequeNo` | Reconciliation | UTR / cheque no |
 | 17 | Cheque/NEFT Date | `paymentInstrumentDate` | Reconciliation | |
@@ -401,8 +405,8 @@ erDiagram
 - **PayingEntity** — code (OSPL/OSSPL/US…), legalName, country, currency, isFreeText.
 - **Invoice** — vendorId, payingEntityId, billNo, billDate, receivedDate, amounts, currency, status, fileObjectId, extractionConfidence, sourceChannel(upload/email).
 - **InvoiceField** — invoiceId, fieldName, value, confidence, edited(bool). *(audit of AI vs human)*
-- **BillingBatch** — code, payingEntityId, periodMonth, status, createdBy, approvedBy, sentToFinanceOn, exportRefs.
-- **BillingLine** — batchId, invoiceId, all §7 fields, categoryId, **costCenter / department / project (E1)**, **riskScore / validationStatus (E2/E3)**, paymentStatus, **notificationStatus / vendorNotifiedAt (F18)**, isRecurring, dueDate, paymentCycle, paymentRecordId.
+- **BillingBatch** — code, periodMonth, status (Draft … Approved → **Sent to Finance** → **Approved By Finance** → Reconciliation Open → Closed), createdBy, approvedBy, **financeApprovedBy**, sentToFinanceOn, exportRefs. *(No batch-level entity — **entity is per invoice**; a batch may span entities, F-review.)*
+- **BillingLine** — batchId, invoiceId, all §7 fields (incl. **payingEntity, billReceivedDate, creditPeriodDays, dueDate, paymentCycle/priority, sentToFinanceOn**), categoryId, **costCenter / department / project (E1)**, **riskScore / validationStatus (E2/E3)**, **adminApprovalStatus, financeApprovalStatus (F20)**, paymentStatus, **notificationStatus / vendorNotifiedAt (F18)**, isRecurring, paymentRecordId, **originalFile → FileObject (F5)**.
 - **PaymentRecord** — financeReportId, payingEntityId, vendorId, utr, paymentDate, mode, grossAmount, tdsAmount, netAmount. *(1 UTR → many BillingLines)*
 - **FinanceReport** — fileObjectId/source(email), payingEntity, reportDate, parsedStatus.
 - **ReconException** — paymentRecordId/financeReportId, type(unmatched/mismatch/duplicate), detail, status, resolvedBy.
@@ -412,6 +416,8 @@ erDiagram
 - **NotificationTemplate** — channel(email/WhatsApp), subject, body(with merge fields), locale, active.
 - **NotificationSchedule (F18)** — frequency(daily/weekly/monthly), runTime, timezone, dayOfWeek/dayOfMonth, scope(entity/all), templateId, enabled, lastRunAt, nextRunAt.
 - **NotificationLog** — vendorId, billRef(s), templateId, channel, **trigger(manual/scheduled)**, status, sentAt, payload.
+- **ReportSchedule (F19)** — reports[], subject, frequency(daily/weekly/monthly), dayOfWeek/dayOfMonth, runTime, timezone, recipients[], format(PDF/Excel/CSV), **lookbackDays (report period)**, enabled, lastRun, nextRun.
+- **ReportDeliveryLog (F19)** — report(s), runAt, recipients, status(Sent/Failed).
 - **FileObject** — storage key, mime, size, checksum, uploadedBy. *(invoices, reports, exports)*
 - **AuditLog** — actor, action, entity, before/after, timestamp (immutable).
 
@@ -423,8 +429,11 @@ erDiagram
 `Uploaded → Extracted → Reviewed(Confirmed/Edited) → InBatch → (Superseded/Rejected)`
 
 **Billing Batch**
-`Draft → Generated → Validated → PendingApproval → (NeedsCorrection → Draft) | (Rejected) | Approved → SentToFinance → ReconciliationOpen → Closed`
-*(the Validation Gate §10.10 must pass — or be overridden with a logged reason — before approval)*
+`Draft → Generated → Validated → PendingApproval → (NeedsCorrection → Draft) | (Rejected) | Approved → SentToFinance → ApprovedByFinance → ReconciliationOpen → Closed`
+*(Validation Gate §10.10 must pass/override before admin approval. After **Sent to Finance**, Finance either **Approves for Payment** → `Approved By Finance`, or **sends back** → `Needs Correction`. F20.)*
+
+**Invoice approval (per BillingLine) — F20**
+`Admin: Pending → Approved | Rejected` (bulk multiselect) · `Finance: Pending → Approved for Payment | Sent Back` (bulk multiselect)
 
 **Payment status (per BillingLine)**
 `Not Paid → Sent to Finance → In Process → Paid` (branches: `Partially Paid`, `On Hold`, `Disputed`)
@@ -453,8 +462,8 @@ stateDiagram-v2
 
 ### 13.1 Upload & Intake (F1, F4)
 - Drag-drop / browse, **multi-file** — **max 10 files per upload, up to 15 MB each** (configurable), types: PDF/JPG/PNG/DOCX/XLSX.
-- Per-upload header: **Invoice received date** (date picker), **Paying company** (dropdown OSPL/OSSPL/US… + "Other" free-text).
-- Live upload list with status (Queued → Extracting → Ready for review).
+- Per-upload defaults: **Invoice received date**, **default paying company** (per-invoice & editable; + "Other" free-text), **default credit period**, **default type (Recurring / Non-recurring)**.
+- Uploaded-files **table** with columns: File, Entity, **Received date**, **Credit period (editable)**, **Due date (derived)**, **Payment Priority I/II (derived)**, **Type — Recurring/Non-recurring (per invoice)**, Status (Queued → Extracting → Ready for review).
 
 ```
 ┌ Upload Invoices ───────────────────────────────────────────┐
@@ -468,15 +477,21 @@ stateDiagram-v2
 ```
 
 ### 13.2 Extraction Review (F2, F3, F5)
-- Split view: **left = original invoice preview** (PDF viewer), **right = extracted fields** form with confidence chips (green/amber/red).
-- Editable fields; arithmetic & duplicate warnings inline.
+- Split view: **left = original invoice preview** (PDF viewer) with **Download**, **right = extracted fields** form with confidence chips (green/amber/red).
+- Editable fields incl. **paying entity, bill received date, credit period, type (recurring/non-recurring)**; **derived Due date + Payment Priority (I/II)** shown live; arithmetic & duplicate warnings inline.
 - Actions: **Confirm & add to batch** → loads next file; or **Skip/Discard**.
 
-### 13.3 Billing Batch & Approval (F6, F7)
-- Tabular grid of all confirmed lines (billing-sheet columns), grouped by entity; totals, recurring split.
-- **Generate billing file** → preview; **Download Excel** / **Download PDF**; **Send to Finance** (email/API).
-- Maker–checker: **Approve / Reject / Needs Correction** + **comment**; status & history shown.
-- **Validation results** (§10.10) and a **Smart Approval Assistant** panel (§10.11 — vendor avg vs current, risk score, recommendation) shown alongside each line.
+### 13.3 Billing Batch & Approval (F5, F6, F7, F20)
+**Batch list:** search/filter (code/period, entity, status); per batch **View / Edit / Delete**; the entity column is **derived from the batch's invoices** (a batch may span entities).
+
+**Batch view (invoices grid)** — horizontally scrollable, billing-sheet-style columns: Vendor (+ recurring tag), Bill no (+ attached original file), Entity, **Received, Credit, Due, Payment Priority (I/II), Sent-to-Finance**, Total, Validation, **Admin approval**, **Finance approval**, Actions.
+- Per invoice: **View** (preview original invoice + **Download**, F5), **Edit / reupload**, **Delete**; **Add invoice** (upload a missing invoice into the batch).
+- **Bulk multiselect** approve/reject — no approving one-by-one.
+- **Validation-gate** summary (§10.10) + **Smart Approval Assistant** (§10.11) for the focused invoice.
+- **Generate billing file** → **Download Excel / PDF**.
+- **Send to Finance** → emails Finance the batch details and sets status **Sent to Finance** (per-invoice Sent date stamped).
+- **Finance role (F20)** — role view (Admin / Finance; real RBAC later): Finance **verifies invoices**, **Approve for Payment** (per invoice via multiselect, or whole batch → **Approved By Finance**), **Send back for correction**, or **Edit/correct** invoices directly; reviews the **Payment Priority** column.
+- Maker–checker **Approve / Reject / Needs Correction** + **comment**; status & history (audit-logged).
 
 ### 13.4 Records & Search (F8, F9)
 - Filters: **date range, vendor, payment status, bill no, UTR, category, paying entity, recurring**.
@@ -503,6 +518,11 @@ stateDiagram-v2
 - **Categories** and **notification templates** management.
 - **Notification schedule (F18):** enable/disable scheduled vendor emails; set frequency (daily / weekly / monthly), time & timezone.
 
+### 13.10 Reports (F19)
+- **Report library:** browse report types by category (Batch · Financial · Spend Analysis · Operational · Compliance) — e.g., *Monthwise invoices & value* (with recurring/non-recurring split), *Paid/Unpaid/Overdue*, *Category-wise*, *Top vendors*, *Department/cost-center*, *Entity-wise*, *Ageing*, *Upcoming liabilities*, *Recurring split*, *SLA/on-time*, *Cycle-time KPIs*, *TDS*, *Reconciliation exceptions*. Each renders charts (donut / bar / ranked bars / KPIs) + a data table, with date-range/entity filters and **Export (Excel / PDF / CSV)**.
+- **Batch Report:** select a **specific batch** — or filter by **processed date range** — to view a batch's **full detail (invoicing lines + reconciliation: UTR/payment)** on screen and **download** (Excel/PDF). Also selectable in the **scheduler** (the schedule's "last N days" sets the processed window).
+- **Scheduled delivery:** schedules that **auto-generate and email** selected reports — **frequency (daily / weekly / monthly) + time/timezone**, **recipients**, **email subject**, **report period (last N days)**, **format**; **enable / edit / delete**, an **active-schedules** list, and **delivery history** (sent/failed + resend). *(Generation & email simulated in the frontend; runs on the Spring scheduler + email in the backend phase.)*
+
 ---
 
 ## 14. API Design
@@ -520,7 +540,11 @@ REST (Spring Boot), OpenAPI-documented, OAuth2-scoped. AI calls proxied to FastA
 | POST | `/api/v1/billing-batches/{id}/generate` | Generate billing file |
 | GET | `/api/v1/billing-batches/{id}/export?format=xlsx\|pdf` | Download (F7) |
 | POST | `/api/v1/billing-batches/{id}/approve` | Approve/Reject/NeedsCorrection + comment |
-| POST | `/api/v1/billing-batches/{id}/send-to-finance` | Share with finance |
+| POST | `/api/v1/billing-batches/{id}/send-to-finance` | **Email Finance** the batch details + set status **Sent to Finance** |
+| PUT / DELETE | `/api/v1/billing-batches/{id}` | Edit / delete a batch (F6) |
+| PUT / DELETE | `/api/v1/billing-batches/{id}/lines/{lineId}` | Edit / delete an invoice in a batch (F6) |
+| POST | `/api/v1/billing-batches/{id}/finance-approve` | Finance: approve for payment → **Approved By Finance** (F20) |
+| POST | `/api/v1/billing-batches/{id}/finance-send-back` | Finance: send back for correction (F20) |
 | POST | `/api/v1/reconciliation/upload` | Upload finance report against batch |
 | GET | `/api/v1/reconciliation/{id}/result` | Matched/unmatched/exceptions |
 | POST | `/api/v1/reconciliation/{id}/approve` | Approve status update |
@@ -529,7 +553,8 @@ REST (Spring Boot), OpenAPI-documented, OAuth2-scoped. AI calls proxied to FastA
 | GET/POST/PUT | `/api/v1/notifications/schedule` | Configure scheduled vendor emails (daily/weekly/monthly + time/timezone) |
 | GET/POST/PUT | `/api/v1/vendors` | Vendor master CRUD |
 | GET | `/api/v1/billing-lines?from&to&vendor&status&billNo&utr&category` | Search (F9) |
-| GET | `/api/v1/reports/{type}` | Report data (monthwise, category, vendor, ageing) |
+| GET | `/api/v1/reports/{type}` | Report data (monthwise, category, vendor, ageing) (F19) |
+| GET/POST/PUT/DELETE | `/api/v1/report-schedules` | Scheduled report delivery — schedules + delivery log (F19) |
 | GET/POST | `/api/v1/templates`, `/api/v1/categories`, `/api/v1/entities` | Config |
 
 AI service (FastAPI): `/ai/extract`, `/ai/classify`, `/ai/resolve-vendor`, `/ai/reconcile`, `/ai/compose-notification` — all schema-validated.
@@ -582,6 +607,8 @@ flowchart TB
 
 All exportable (Excel/PDF/CSV); built on the analytics layer from the master plan.
 
+**Scheduled report delivery (F19):** any report (or a set) can be **auto-generated and emailed** on a **daily / weekly / monthly** schedule to chosen recipients, with a configurable **subject** and **report period (last N days)** — managed schedules (enable/edit/delete) + delivery history. UI in §13.10; runs on the Spring scheduler + email in the backend.
+
 ---
 
 ## 17. Notifications & Reminders (F13, F17)
@@ -622,10 +649,10 @@ Channels (this phase): in-app + **email** (reusing the OASIS Notification Hub); 
 |---|---|---|
 | **5.0 — Foundations (1–2 wks)** | Data model, vendor master (+GSTIN/PAN/MSME, E7), categories, **cost-center/department/project masters (E1)**, entities, file storage, audit | Master data + plumbing |
 | **5.1 — Intake & Extraction (2–3 wks)** | Upload (F1/F4), OCR+LLM extraction (F2), review/confirm (F3/F5), duplicate checks | Invoices → structured data with human confirm |
-| **5.2 — Billing Batch, Validation & Approval (2–3 wks)** | Batch build, billing-file generation, Excel/PDF export (F7), **Validation gate (E2, §10.10)**, maker–checker (F6) with **Smart Approval Assistant (E4, §10.11)**, send to Finance | Validated, approved billing file |
+| **5.2 — Billing Batch, Approval & Finance (3–4 wks)** | Batch build + **edit/delete**, per-invoice **add/edit/reupload/delete + view/download original (F5)**, billing-file Excel/PDF (F7), **Validation gate (E2)**, **bulk multiselect** maker–checker (F6) with **Smart Approval Assistant (E4)**, **Send to Finance (email + status)**, **Finance verification/approval workflow (F20)** | Validated → Sent to Finance → Approved By Finance |
 | **5.3 — Reconciliation (2–3 wks)** | Finance report ingest (F10), match-by-reference + TDS (F11), **duplicate-payment & fraud/anomaly checks (E3, §10.6)**, exceptions, review/approve (F12), status update | Auto UTR reconciliation |
 | **5.4 — Notifications & Reminders (1–2 wks)** | Configurable vendor messages — **manual + scheduled (daily/weekly/monthly) with "already-notified" dedup (F13/F18)**, due/overdue engine (F17) | Automated comms |
-| **5.5 — Search, Reports & Dashboards (2 wks)** | Search panel (F9), records views (F8), dashboards & reports (F15) incl. **dept/cost-center spend, upcoming-liability & SLA/KPIs (E1/E5/E6)** | Analytics & retrieval |
+| **5.5 — Search, Reports & Dashboards (2–3 wks)** | Search (F9), records (F8), dashboards & **report library** (F15) incl. dept/cost-center, upcoming-liability & SLA/KPIs (E1/E5/E6), and **scheduled report email delivery (F19)** | Analytics, retrieval & report subscriptions |
 | **5.6 — Hardening (1 wk)** | Performance, security review, UAT | Production-ready |
 
 *Indicative ~10–13 weeks; sequenced so each phase is demoable.*
@@ -675,6 +702,9 @@ Channels (this phase): in-app + **email** (reusing the OASIS Notification Hub); 
 | 5 | Recurring invoices | **Manual upload** for now (user flags recurring); **auto-generation is a future advanced feature** |
 | 6 | Notifications | **Email only** for now; **WhatsApp deferred** to a later phase |
 | 7 | Invoice extraction engine | **Azure AI Document Intelligence** (tenant-bound, in-region, no-train) — **accepted**; behind a **pluggable provider** so on-prem is a config swap (see §10.9) |
+| 8 | Entity granularity | **Entity is set per invoice**, not per batch; a batch may span entities (its entity column is derived). Captured at upload/review (F4) |
+| 9 | Finance access | Finance **accesses the same batch in OASIS** to verify & **Approve for Payment** (→ Approved By Finance), send back, or edit/correct; shown via a demo **role toggle** now, **enforced by the RBAC module** later (F20) |
+| 10 | Reports | **Report library + scheduled email delivery** (daily/weekly/monthly, recipients, subject, last-N-days period) — F19 |
 
 **Remaining assumptions**
 - The existing billing Excel layout in `Data/` is the target export format (locked in 5.0).
@@ -706,4 +736,4 @@ Channels (this phase): in-app + **email** (reusing the OASIS Notification Hub); 
 
 ---
 
-*End of Module 5 design (Draft v1.0 for review). On approval, build proceeds per §19, reusing the OASIS frontend shell, Spring Boot services, and FastAPI AI layer already established.*
+*End of Module 5 design (Draft v1.3 for review). The **frontend** is built against this design on a mock-data layer (see [implementation_invoice.md](implementation_invoice.md)); the **backend** (Spring Boot + PostgreSQL + Azure AI extraction + report scheduler/email) proceeds per §19, reusing the OASIS frontend shell, Spring Boot services, and FastAPI AI layer.*

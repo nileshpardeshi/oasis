@@ -21,7 +21,7 @@ export default function ReconciliationPage() {
         <div className="field">
           <label>Reconcile against batch</label>
           <select className="select" value={batchId} onChange={(e) => { setBatchId(e.target.value); setRan(false); setApproved(false); }}>
-            {billingBatches.map((b) => <option key={b.id} value={b.id}>{b.code} — {b.payingEntityCode} · {b.periodMonth}</option>)}
+            {billingBatches.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.periodMonth}</option>)}
           </select>
         </div>
       </div>

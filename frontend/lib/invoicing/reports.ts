@@ -2,7 +2,7 @@
 import { inr } from './mockData';
 
 export type Viz = 'bar' | 'donut' | 'rankbars' | 'kpi';
-export type ReportCategory = 'Financial' | 'Spend Analysis' | 'Operational' | 'Compliance';
+export type ReportCategory = 'Batch' | 'Financial' | 'Spend Analysis' | 'Operational' | 'Compliance';
 
 export interface ChartDatum { label: string; value: number; color?: string }
 export interface KpiDatum { label: string; value: string; sub?: string }
@@ -198,9 +198,15 @@ export const REPORTS: ReportDef[] = [
       rows: [['MCR-0426-1180', 'Metro Car Rentals', inr(11956), 'Reference not found in batch']],
     },
   },
+  {
+    id: 'batch-report', name: 'Batch Report (invoicing + reconciliation)', category: 'Batch', viz: 'bar',
+    desc: 'Full detail of a selected billing batch — invoicing lines + reconciliation (UTR/payment) — viewable & downloadable; filter by processed date range. Schedulable.',
+    chart: [],
+    table: { columns: [], numCols: [], rows: [] },
+  },
 ];
 
-export const reportCategories: ReportCategory[] = ['Financial', 'Spend Analysis', 'Operational', 'Compliance'];
+export const reportCategories: ReportCategory[] = ['Batch', 'Financial', 'Spend Analysis', 'Operational', 'Compliance'];
 
 // ---- Scheduled delivery (subscriptions) ----
 export interface ReportSchedule {

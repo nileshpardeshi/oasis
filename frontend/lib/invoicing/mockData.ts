@@ -79,44 +79,44 @@ export const invoices: Invoice[] = [
 // Billing lines (current + historical, drive batches, records, dashboards)
 export const billingLines: BillingLine[] = [
   {
-    id: 'bl1', payingEntityCode: 'OSPL', vendorName: 'Skyline Telecom Ltd', billNo: 'STL-2026-04412', billDate: '2026-05-31',
+    id: 'bl1', fileName: 'Skyline_Telecom_May.pdf', fileType: 'PDF', payingEntityCode: 'OSPL', vendorName: 'Skyline Telecom Ltd', billNo: 'STL-2026-04412', billDate: '2026-05-31',
     description: 'Leased line + PRI charges — May 2026', categoryName: 'Telecom & Internet', costCenter: 'CC-IT', department: 'IT Infra',
-    basicAmount: 42000, gstAmount: 7560, totalAmount: 49560, dueDate: '2026-06-15', paymentCycle: 'I',
+    basicAmount: 42000, gstAmount: 7560, totalAmount: 49560, billReceivedDate: '2026-06-01', creditPeriodDays: 15, dueDate: '2026-06-15', paymentCycle: 'I',
     paymentStatus: 'Not Paid', isRecurring: true, riskLevel: 'Low', validationStatus: 'Pass', notificationStatus: 'Not Notified',
   },
   {
-    id: 'bl2', payingEntityCode: 'OSPL', vendorName: 'BlueSky Hotels - Pune', billNo: 'BSH-IPVN-90231', billDate: '2026-05-28',
+    id: 'bl2', fileName: 'BlueSky_Hotels_stay.pdf', fileType: 'PDF', payingEntityCode: 'OSPL', vendorName: 'BlueSky Hotels - Pune', billNo: 'BSH-IPVN-90231', billDate: '2026-05-28',
     description: 'Guest accommodation 12 room-nights', categoryName: 'Hotel & Accommodation', costCenter: 'CC-ADMIN', department: 'Admin',
-    basicAmount: 64000, gstAmount: 11520, totalAmount: 75520, dueDate: '2026-06-27', paymentCycle: 'II',
+    basicAmount: 64000, gstAmount: 11520, totalAmount: 75520, billReceivedDate: '2026-05-30', creditPeriodDays: 30, dueDate: '2026-06-27', paymentCycle: 'II',
     paymentStatus: 'Not Paid', isRecurring: false, riskLevel: 'Medium', validationStatus: 'Warning',
     validationNotes: ['Bill no format differs from vendor history', 'Amount 38% above 6-month average'], notificationStatus: 'Not Notified',
   },
   {
-    id: 'bl3', payingEntityCode: 'OSSPL', vendorName: 'Metro Car Rentals Pvt Ltd', billNo: 'MCR-0426-2931', billDate: '2026-05-30',
+    id: 'bl3', fileName: 'Metro_Cabs_scan.pdf', fileType: 'PDF (scan)', payingEntityCode: 'OSSPL', vendorName: 'Metro Car Rentals Pvt Ltd', billNo: 'MCR-0426-2931', billDate: '2026-05-30',
     description: 'Airport transfers — 7 trips', categoryName: 'Travel – Cab/Car Rental', costCenter: 'CC-DELIVERY', department: 'Delivery',
-    basicAmount: 18500, gstAmount: 925, totalAmount: 19425, tdsAmount: 370, dueDate: '2026-06-29', paymentCycle: 'II',
+    basicAmount: 18500, gstAmount: 925, totalAmount: 19425, tdsAmount: 370, billReceivedDate: '2026-06-02', creditPeriodDays: 30, dueDate: '2026-06-29', paymentCycle: 'II',
     paymentStatus: 'Not Paid', isRecurring: false, riskLevel: 'High', validationStatus: 'Fail',
     validationNotes: ['Vendor bank account changed since last invoice — needs confirmation', 'GST amount looks low for taxable value'], notificationStatus: 'Not Notified',
   },
   // historical (paid) — for records/dashboards/notifications
   {
-    id: 'bl4', payingEntityCode: 'OSPL', vendorName: 'Skyline Telecom Ltd', billNo: 'STL-2026-04111', billDate: '2026-04-30',
+    id: 'bl4', fileName: 'Skyline_Telecom_Apr.pdf', fileType: 'PDF', payingEntityCode: 'OSPL', vendorName: 'Skyline Telecom Ltd', billNo: 'STL-2026-04111', billDate: '2026-04-30',
     description: 'Leased line + PRI charges — Apr 2026', categoryName: 'Telecom & Internet', costCenter: 'CC-IT', department: 'IT Infra',
-    basicAmount: 42000, gstAmount: 7560, totalAmount: 49560, tdsAmount: 0, paidAmount: 49560, dueDate: '2026-05-15',
+    basicAmount: 42000, gstAmount: 7560, totalAmount: 49560, tdsAmount: 0, paidAmount: 49560, billReceivedDate: '2026-05-01', creditPeriodDays: 15, sentToFinanceOn: '2026-05-03', dueDate: '2026-05-15',
     paymentCycle: 'I', paymentStatus: 'Paid', paymentDate: '2026-05-14', utr: 'UTRSAMPLE0510111', paymentMode: 'NEFT',
     isRecurring: true, riskLevel: 'Low', validationStatus: 'Pass', notificationStatus: 'Sent',
   },
   {
-    id: 'bl5', payingEntityCode: 'OSPL', vendorName: 'PrimeGuard Security Services', billNo: 'PG-APR-7781', billDate: '2026-04-30',
+    id: 'bl5', fileName: 'PrimeGuard_Security_Apr.pdf', fileType: 'PDF', payingEntityCode: 'OSPL', vendorName: 'PrimeGuard Security Services', billNo: 'PG-APR-7781', billDate: '2026-04-30',
     description: 'Security manpower — Apr 2026', categoryName: 'Security Services', costCenter: 'CC-ADMIN', department: 'Admin',
-    basicAmount: 88000, gstAmount: 15840, totalAmount: 103840, tdsAmount: 880, paidAmount: 102960, dueDate: '2026-05-30',
+    basicAmount: 88000, gstAmount: 15840, totalAmount: 103840, tdsAmount: 880, paidAmount: 102960, billReceivedDate: '2026-05-02', creditPeriodDays: 30, sentToFinanceOn: '2026-05-03', dueDate: '2026-05-30',
     paymentCycle: 'II', paymentStatus: 'Paid', paymentDate: '2026-05-29', utr: 'UTRSAMPLE0529778', paymentMode: 'NEFT',
     isRecurring: true, riskLevel: 'Low', validationStatus: 'Pass', notificationStatus: 'Not Notified',
   },
   {
-    id: 'bl6', payingEntityCode: 'OSSPL', vendorName: 'RapidPost Couriers', billNo: 'RP-54990', billDate: '2026-04-28',
+    id: 'bl6', fileName: 'RapidPost_Courier_Apr.xlsx', fileType: 'Excel', payingEntityCode: 'OSSPL', vendorName: 'RapidPost Couriers', billNo: 'RP-54990', billDate: '2026-04-28',
     description: 'Domestic courier — Apr 2026', categoryName: 'Courier & Logistics', costCenter: 'CC-ADMIN', department: 'Admin',
-    basicAmount: 5100, gstAmount: 918, totalAmount: 6018, tdsAmount: 102, paidAmount: 5916, dueDate: '2026-05-05',
+    basicAmount: 5100, gstAmount: 918, totalAmount: 6018, tdsAmount: 102, paidAmount: 5916, billReceivedDate: '2026-04-29', creditPeriodDays: 7, sentToFinanceOn: '2026-05-03', dueDate: '2026-05-05',
     paymentCycle: 'I', paymentStatus: 'Paid', paymentDate: '2026-05-06', utr: 'UTRSAMPLE0506549', paymentMode: 'NEFT',
     isRecurring: true, riskLevel: 'Low', validationStatus: 'Pass', notificationStatus: 'Not Notified',
   },
@@ -124,15 +124,15 @@ export const billingLines: BillingLine[] = [
 
 export const billingBatches: BillingBatch[] = [
   {
-    id: 'b1', code: 'BILL-2026-06-I', payingEntityCode: 'OSPL', periodMonth: 'Jun 2026', status: 'Pending Approval',
+    id: 'b1', code: 'BILL-2026-06-I', periodMonth: 'Jun 2026', status: 'Pending Approval',
     createdBy: 'Admin User', lineIds: ['bl1', 'bl2'], totalValue: 125080, recurringCount: 1, nonRecurringCount: 1, createdAt: '2026-06-03',
   },
   {
-    id: 'b2', code: 'BILL-2026-06-OSSPL', payingEntityCode: 'OSSPL', periodMonth: 'Jun 2026', status: 'Draft',
+    id: 'b2', code: 'BILL-2026-06-OSSPL', periodMonth: 'Jun 2026', status: 'Draft',
     createdBy: 'Admin User', lineIds: ['bl3'], totalValue: 19425, recurringCount: 0, nonRecurringCount: 1, createdAt: '2026-06-03',
   },
   {
-    id: 'b3', code: 'BILL-2026-05-I', payingEntityCode: 'OSPL', periodMonth: 'May 2026', status: 'Reconciliation Open',
+    id: 'b3', code: 'BILL-2026-05-I', periodMonth: 'May 2026', status: 'Reconciliation Open',
     createdBy: 'Admin User', lineIds: ['bl4', 'bl5', 'bl6'], totalValue: 159418, recurringCount: 3, nonRecurringCount: 0, createdAt: '2026-05-03',
   },
 ];
@@ -157,6 +157,20 @@ export const notificationSchedule: NotificationSchedule = {
 // ---- helpers ----
 export const inr = (n: number) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(n);
+
+// Payment priority/cycle from the due date: due by 7th → I, by 22nd → II, else next cycle (I).
+export const paymentPriority = (due?: string): 'I' | 'II' => {
+  if (!due) return 'I';
+  const day = new Date(due).getDate();
+  return day <= 7 ? 'I' : day <= 22 ? 'II' : 'I';
+};
+export const addDays = (from: string, days: number) => {
+  const d = new Date(from);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+};
+export const daysBetween = (from?: string, to?: string): number | undefined =>
+  from && to ? Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000) : undefined;
 
 export const getBatch = (id: string) => billingBatches.find((b) => b.id === id);
 export const linesForBatch = (id: string): BillingLine[] => {

@@ -1,13 +1,17 @@
 /* OASIS — Invoicing module styles (reuses brand tokens from globals.css) */
 
-/* sub-navigation */
-.inv-subnav { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
-.inv-subnav a {
-  padding: 10px 14px; font-size: 13.5px; font-weight: 600; color: var(--text-muted);
-  border-bottom: 2px solid transparent; margin-bottom: -1px; white-space: nowrap; display: inline-flex; align-items: center; gap: 7px;
+/* sub-navigation — contained, light-shaded tab bar */
+.inv-subnav {
+  display: flex; gap: 4px; flex-wrap: wrap;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 12px;
+  padding: 5px; margin-bottom: 20px; box-shadow: var(--shadow-sm);
 }
-.inv-subnav a:hover { color: var(--brand-blue); }
-.inv-subnav a.active { color: var(--brand-blue); border-bottom-color: var(--accent); }
+.inv-subnav a {
+  padding: 8px 13px; font-size: 13.5px; font-weight: 600; color: var(--text-muted); border-radius: 9px;
+  white-space: nowrap; display: inline-flex; align-items: center; gap: 7px; transition: background .15s, color .15s;
+}
+.inv-subnav a:hover { color: var(--brand-blue); background: rgba(6, 66, 129, .06); }
+.inv-subnav a.active { color: var(--brand-blue); background: var(--surface); box-shadow: var(--shadow-sm), inset 0 -2px 0 var(--accent); }
 .inv-subnav a svg { width: 16px; height: 16px; }
 
 /* toolbar / filters */
@@ -162,3 +166,10 @@
 .recipient-chip button { border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 14px; line-height: 1; }
 
 @media (max-width: 1024px) { .report-layout { grid-template-columns: 1fr; } .report-list { position: static; } .rb-row { grid-template-columns: 130px 1fr 90px; } }
+
+/* ===== Invoice preview modal ===== */
+.inv-modal-backdrop { position: fixed; inset: 0; background: rgba(3, 38, 72, .45); z-index: 60; display: grid; place-items: center; padding: 24px; }
+.inv-modal { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow-lg); width: min(760px, 100%); max-height: 88vh; display: flex; flex-direction: column; overflow: hidden; }
+.inv-modal__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 16px; border-bottom: 1px solid var(--border); }
+.inv-modal__body { flex: 1; overflow: auto; }
+.attach { font-size: 11.5px; color: var(--text-soft); margin-top: 2px; display: inline-flex; align-items: center; gap: 4px; }

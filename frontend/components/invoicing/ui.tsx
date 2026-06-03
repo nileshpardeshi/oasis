@@ -12,6 +12,7 @@ const BATCH_CLASS: Record<BatchStatus, string> = {
   'Rejected': 'st-hold',
   'Approved': 'st-paid',
   'Sent to Finance': 'st-sentfin',
+  'Approved By Finance': 'st-paid',
   'Reconciliation Open': 'st-sentfin',
   'Closed': 'st-unpaid',
 };

@@ -14,6 +14,7 @@ export type BatchStatus =
   | 'Rejected'
   | 'Approved'
   | 'Sent to Finance'
+  | 'Approved By Finance'
   | 'Reconciliation Open'
   | 'Closed';
 export type ExtractionStatus = 'Queued' | 'Extracting' | 'Ready for Review' | 'Confirmed';
@@ -72,10 +73,15 @@ export interface Invoice {
 
 export interface BillingLine {
   id: string;
+  fileName?: string;   // original uploaded invoice file — kept for reference & download
+  fileType?: string;
   payingEntityCode: string;
   vendorName: string;
   billNo: string;
   billDate: string;
+  billReceivedDate?: string;
+  creditPeriodDays?: number;
+  sentToFinanceOn?: string;
   description: string;
   categoryName: string;
   costCenter?: string;
@@ -101,7 +107,6 @@ export interface BillingLine {
 export interface BillingBatch {
   id: string;
   code: string;
-  payingEntityCode: string;
   periodMonth: string;
   status: BatchStatus;
   createdBy: string;

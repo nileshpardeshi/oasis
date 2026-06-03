@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
-import { invoices, categories } from '@/lib/invoicing/mockData';
+import { invoices, categories, payingEntities, addDays, paymentPriority } from '@/lib/invoicing/mockData';
 import { ConfidenceDot } from '@/components/invoicing/ui';
 import type { Invoice } from '@/lib/invoicing/types';
 
@@ -33,6 +33,12 @@ function ReviewCard({ invoice, index, total, confirmed, onConfirm, onPrev }: {
   const [totalAmt, setTotalAmt] = useState(invoice.totalAmount.value);
   const [category, setCategory] = useState(invoice.categoryId ?? '');
   const [desc, setDesc] = useState(invoice.description.value);
+  const [entity, setEntity] = useState(invoice.payingEntityCode);
+  const [received, setReceived] = useState(invoice.receivedDate);
+  const [credit, setCredit] = useState(30);
+  const [recurring, setRecurring] = useState<'Recurring' | 'Non-recurring'>('Non-recurring');
+  const dueDate = addDays(received, credit);
+  const priority = paymentPriority(dueDate);
 
   const arithmeticOff = Math.abs(basic + gst - totalAmt) > 1;
   const hasLow = [invoice.vendorName, invoice.billNo, invoice.billDate, invoice.basicAmount, invoice.gstAmount, invoice.totalAmount, invoice.description]
@@ -50,7 +56,7 @@ function ReviewCard({ invoice, index, total, confirmed, onConfirm, onPrev }: {
         <div className="pdf-pane">
           <div className="panel__head">
             <div className="panel__title"><Icon name="invoicing" size={16} /> Original invoice</div>
-            <span className="panel__link">Open full</span>
+            <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock: download ' + invoice.fileName)}><Icon name="invoicing" size={14} /> Download</button>
           </div>
           <div className="pdf-stub">
             <div style={{ textAlign: 'center' }}>
@@ -97,6 +103,26 @@ function ReviewCard({ invoice, index, total, confirmed, onConfirm, onPrev }: {
           <div className="field-row">
             <label><ConfidenceDot level={invoice.description.confidence} /><br />Description</label>
             <input className="input" value={desc} onChange={(e) => setDesc(e.target.value)} style={{ minWidth: 0 }} />
+          </div>
+          <div className="field-row">
+            <label>Paying entity</label>
+            <select className="select" value={entity} onChange={(e) => setEntity(e.target.value)} style={{ minWidth: 0 }}>{payingEntities.map((p) => <option key={p.id} value={p.code}>{p.code}</option>)}</select>
+          </div>
+          <div className="field-row">
+            <label>Bill received date</label>
+            <input className="input" type="date" value={received} onChange={(e) => setReceived(e.target.value)} style={{ minWidth: 0 }} />
+          </div>
+          <div className="field-row">
+            <label>Credit period (days)</label>
+            <input className="input" type="number" value={credit} onChange={(e) => setCredit(+e.target.value)} style={{ minWidth: 0 }} />
+          </div>
+          <div className="field-row">
+            <label>Type</label>
+            <select className="select" value={recurring} onChange={(e) => setRecurring(e.target.value as typeof recurring)} style={{ minWidth: 0 }}><option>Non-recurring</option><option>Recurring</option></select>
+          </div>
+          <div className="field-row">
+            <label>Due date (auto)</label>
+            <div><b>{dueDate}</b> &nbsp; <span className={`pill ${priority === 'I' ? 'st-process' : 'st-sentfin'}`}>Priority {priority}</span></div>
           </div>
 
           {arithmeticOff && <div className="warn-inline"><Icon name="alert" size={15} /> Basic + GST ({(basic + gst).toLocaleString('en-IN')}) ≠ Total ({totalAmt.toLocaleString('en-IN')}) — please check.</div>}

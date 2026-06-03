@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { DonutChart, RankBars, BarChartV } from '@/components/invoicing/charts';
-import { inr } from '@/lib/invoicing/mockData';
+import { inr, billingBatches, linesForBatch, reconLines, paymentPriority } from '@/lib/invoicing/mockData';
+import { StatusBadge } from '@/components/invoicing/ui';
 import {
   REPORTS, reportCategories, reportSchedules, deliveryLog,
   type ReportDef, type ReportSchedule,
@@ -45,6 +46,88 @@ function ReportTable({ r }: { r: ReportDef }) {
   );
 }
 
+/* ---------- Batch Report (invoicing + reconciliation) ---------- */
+function BatchReportView() {
+  const [from, setFrom] = useState('2026-05-01');
+  const [to, setTo] = useState('2026-06-30');
+  const [batchId, setBatchId] = useState(billingBatches[0]?.id ?? '');
+
+  const inRange = billingBatches.filter((b) => b.createdAt >= from && b.createdAt <= to);
+  const batch = inRange.find((b) => b.id === batchId) ?? inRange[0];
+  const lines = batch ? linesForBatch(batch.id) : [];
+  const recon = reconLines.filter((r) => lines.some((l) => l.billNo === r.billNo));
+  const total = lines.reduce((s, l) => s + l.totalAmount, 0);
+
+  return (
+    <>
+      <div className="toolbar">
+        <div className="field"><label>Processed from</label><input className="input" type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></div>
+        <div className="field"><label>Processed to</label><input className="input" type="date" value={to} onChange={(e) => setTo(e.target.value)} /></div>
+        <div className="field"><label>Batch</label>
+          <select className="select" value={batch?.id ?? ''} onChange={(e) => setBatchId(e.target.value)}>
+            {inRange.length === 0 && <option value="">— none in range —</option>}
+            {inRange.map((b) => <option key={b.id} value={b.id}>{b.code} · {b.periodMonth}</option>)}
+          </select>
+        </div>
+        <div className="spacer" />
+        <button className="btn btn--ghost btn--sm" disabled={!batch} onClick={() => alert('Mock: export batch report (Excel)')}><Icon name="invoicing" size={15} /> Excel</button>
+        <button className="btn btn--primary btn--sm" disabled={!batch} onClick={() => alert('Mock: download full batch report (PDF)')}><Icon name="invoicing" size={15} /> Download PDF</button>
+      </div>
+
+      {!batch ? (
+        <div className="empty"><div className="empty__icon"><Icon name="invoicing" size={36} /></div><h2>No batches processed in this range</h2><p>Adjust the processed-date range above.</p></div>
+      ) : (
+        <>
+          <div className="totals-bar">
+            <div><b>{batch.code}</b><span>Batch</span></div>
+            <div><b>{batch.periodMonth}</b><span>Period</span></div>
+            <div><b>{lines.length}</b><span>Invoices</span></div>
+            <div><b>{inr(total)}</b><span>Total</span></div>
+            <div><b>{Array.from(new Set(lines.map((l) => l.payingEntityCode))).join(', ') || '—'}</b><span>Entities</span></div>
+            <div><b>{batch.status}</b><span>Status</span></div>
+          </div>
+
+          <h3 className="section-title">Invoicing details</h3>
+          <div className="table-card" style={{ overflowX: 'auto', marginBottom: 18 }}>
+            <table className="data-table" style={{ minWidth: 1040 }}>
+              <thead><tr><th>Vendor</th><th>Bill no</th><th>Entity</th><th>Bill date</th><th>Received</th><th>Due</th><th>Priority</th><th className="num">Basic</th><th className="num">GST</th><th className="num">Total</th><th>Status</th></tr></thead>
+              <tbody>
+                {lines.map((l) => (
+                  <tr key={l.id}>
+                    <td>{l.vendorName}</td><td className="mono">{l.billNo}</td><td>{l.payingEntityCode}</td>
+                    <td>{l.billDate}</td><td>{l.billReceivedDate ?? l.billDate}</td><td>{l.dueDate}</td>
+                    <td><span className={`pill ${paymentPriority(l.dueDate) === 'I' ? 'st-process' : 'st-sentfin'}`}>{paymentPriority(l.dueDate)}</span></td>
+                    <td className="num">{inr(l.basicAmount)}</td><td className="num">{inr(l.gstAmount)}</td><td className="num">{inr(l.totalAmount)}</td>
+                    <td><StatusBadge status={l.paymentStatus} /></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          <h3 className="section-title">Reconciliation details</h3>
+          <div className="table-card" style={{ overflowX: 'auto' }}>
+            <table className="data-table" style={{ minWidth: 900 }}>
+              <thead><tr><th>Bill no (ref)</th><th>Vendor</th><th className="num">Gross</th><th className="num">TDS</th><th className="num">Net</th><th>UTR</th><th>Paid on</th><th>Mode</th><th>Result</th></tr></thead>
+              <tbody>
+                {recon.length === 0 && <tr><td colSpan={9} style={{ textAlign: 'center', padding: 22, color: 'var(--text-soft)' }}>No reconciliation recorded yet for this batch.</td></tr>}
+                {recon.map((r, i) => (
+                  <tr key={i}>
+                    <td className="mono">{r.billNo}</td><td>{r.vendorName}</td>
+                    <td className="num">{inr(r.gross)}</td><td className="num">{r.tds ? inr(r.tds) : '—'}</td><td className="num">{inr(r.net)}</td>
+                    <td className="mono">{r.utr}</td><td>{r.paymentDate}</td><td>{r.mode}</td>
+                    <td>{r.match === 'matched' ? <span className="pill st-paid">Matched</span> : <span className="pill st-hold">Exception</span>}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </>
+  );
+}
+
 /* ---------- Report Library ---------- */
 function ReportLibrary({ onSchedule }: { onSchedule: (name: string) => void }) {
   const [id, setId] = useState(REPORTS[0].id);
@@ -70,26 +153,31 @@ function ReportLibrary({ onSchedule }: { onSchedule: (name: string) => void }) {
             <p className="sub-hint" style={{ margin: '4px 0 0' }}>{r.desc}</p>
           </div>
           <div className="report-actions">
-            <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock: export Excel')}><Icon name="invoicing" size={15} /> Excel</button>
-            <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock: export PDF')}><Icon name="invoicing" size={15} /> PDF</button>
-            <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock: export CSV')}>CSV</button>
+            {r.id !== 'batch-report' && (<>
+              <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock: export Excel')}><Icon name="invoicing" size={15} /> Excel</button>
+              <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock: export PDF')}><Icon name="invoicing" size={15} /> PDF</button>
+              <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock: export CSV')}>CSV</button>
+            </>)}
             <button className="btn btn--primary btn--sm" onClick={() => onSchedule(r.name)}><Icon name="bell" size={15} /> Schedule</button>
           </div>
         </div>
 
-        <div className="toolbar">
-          <div className="field"><label>From</label><input className="input" type="date" defaultValue="2026-01-01" /></div>
-          <div className="field"><label>To</label><input className="input" type="date" defaultValue="2026-06-30" /></div>
-          <div className="field"><label>Entity</label><select className="select"><option>All</option><option>OSPL</option><option>OSSPL</option><option>OPUS-US</option></select></div>
-          <div className="spacer" />
-          <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock: refresh report')}>Apply</button>
-        </div>
-
-        <div className="card" style={{ padding: 18, marginBottom: 16 }}>
-          <ReportChart r={r} />
-        </div>
-        <ReportTable r={r} />
-        <p className="sub-hint" style={{ marginTop: 10 }}>Sample data — live figures arrive with the backend phase.</p>
+        {r.id === 'batch-report' ? <BatchReportView /> : (
+          <>
+            <div className="toolbar">
+              <div className="field"><label>From</label><input className="input" type="date" defaultValue="2026-01-01" /></div>
+              <div className="field"><label>To</label><input className="input" type="date" defaultValue="2026-06-30" /></div>
+              <div className="field"><label>Entity</label><select className="select"><option>All</option><option>OSPL</option><option>OSSPL</option><option>OPUS-US</option></select></div>
+              <div className="spacer" />
+              <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock: refresh report')}>Apply</button>
+            </div>
+            <div className="card" style={{ padding: 18, marginBottom: 16 }}>
+              <ReportChart r={r} />
+            </div>
+            <ReportTable r={r} />
+            <p className="sub-hint" style={{ marginTop: 10 }}>Sample data — live figures arrive with the backend phase.</p>
+          </>
+        )}
       </section>
     </div>
   );
