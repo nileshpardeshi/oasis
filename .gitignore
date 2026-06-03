@@ -23,9 +23,15 @@ Thumbs.db
 
 # Microsoft Office temp / lock files
 ~$*
+~WRL*.tmp
+*.tmp
 
 # TypeScript build info
 *.tsbuildinfo
 
 # Claude local (machine-specific) settings
 .claude/settings.local.json
+
+# Sensitive source data — real sample invoices & finance payment report.
+# Excluded from git for data privacy (real UTRs, amounts, vendor & internal email data).
+Data/
