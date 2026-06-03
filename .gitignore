@@ -7,6 +7,9 @@ out/
 build/
 dist/
 
+# Vercel (local project link)
+.vercel
+
 # Logs
 *.log
 npm-debug.log*
