@@ -155,9 +155,10 @@ export interface IconProps {
   size?: number;
   strokeWidth?: number;
   className?: string;
+  style?: React.CSSProperties;
 }
 
-export function Icon({ name, size = 20, strokeWidth = 1.8, className }: IconProps) {
+export function Icon({ name, size = 20, strokeWidth = 1.8, className, style }: IconProps) {
   return (
     <svg
       width={size}
@@ -169,6 +170,7 @@ export function Icon({ name, size = 20, strokeWidth = 1.8, className }: IconProp
       strokeLinecap="round"
       strokeLinejoin="round"
       className={className}
+      style={style}
       aria-hidden="true"
       focusable="false"
     >

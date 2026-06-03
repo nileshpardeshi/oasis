@@ -4,7 +4,10 @@ import { moduleBySlug } from '@/lib/navigation';
 
 /** Pre-render a static page for each known module slug. */
 export function generateStaticParams() {
-  return Object.keys(moduleBySlug).map((module) => ({ module }));
+  // 'invoicing' has its own dedicated route tree (app/invoicing/*), so exclude it here.
+  return Object.keys(moduleBySlug)
+    .filter((m) => m !== 'invoicing')
+    .map((module) => ({ module }));
 }
 
 export default function ModulePlaceholderPage({ params }: { params: { module: string } }) {
