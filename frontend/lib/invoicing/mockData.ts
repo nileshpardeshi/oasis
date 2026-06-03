@@ -120,12 +120,27 @@ export const billingLines: BillingLine[] = [
     paymentCycle: 'I', paymentStatus: 'Paid', paymentDate: '2026-05-06', utr: 'UTRSAMPLE0506549', paymentMode: 'NEFT',
     isRecurring: true, riskLevel: 'Low', validationStatus: 'Pass', notificationStatus: 'Not Notified',
   },
+  // Second PrimeGuard invoice — paid in the SAME payment as bl5 (same UTR) → demonstrates per-vendor combined payment / one UTR
+  {
+    id: 'bl7', fileName: 'PrimeGuard_Security_Apr2.pdf', fileType: 'PDF', payingEntityCode: 'OSPL', vendorName: 'PrimeGuard Security Services', billNo: 'PG-APR-7782', billDate: '2026-04-30',
+    description: 'Security manpower (extra deployment) — Apr 2026', categoryName: 'Security Services', costCenter: 'CC-ADMIN', department: 'Admin',
+    basicAmount: 44000, gstAmount: 7920, totalAmount: 51920, tdsAmount: 440, paidAmount: 51480, billReceivedDate: '2026-05-02', creditPeriodDays: 30, sentToFinanceOn: '2026-05-03', dueDate: '2026-05-30',
+    paymentCycle: 'II', paymentStatus: 'Paid', paymentDate: '2026-05-29', utr: 'UTRSAMPLE0529778', paymentMode: 'NEFT',
+    isRecurring: true, riskLevel: 'Low', validationStatus: 'Pass', notificationStatus: 'Not Notified',
+  },
+  // Second Skyline invoice in the current (Jun) batch → demonstrates vendor grouping in the approval view
+  {
+    id: 'bl8', fileName: 'Skyline_Telecom_May_PRI.pdf', fileType: 'PDF', payingEntityCode: 'OSPL', vendorName: 'Skyline Telecom Ltd', billNo: 'STL-2026-04500', billDate: '2026-05-31',
+    description: 'Additional PRI lines — May 2026', categoryName: 'Telecom & Internet', costCenter: 'CC-IT', department: 'IT Infra',
+    basicAmount: 18000, gstAmount: 3240, totalAmount: 21240, billReceivedDate: '2026-06-01', creditPeriodDays: 15, dueDate: '2026-06-15',
+    paymentCycle: 'I', paymentStatus: 'Not Paid', isRecurring: true, riskLevel: 'Low', validationStatus: 'Pass', notificationStatus: 'Not Notified',
+  },
 ];
 
 export const billingBatches: BillingBatch[] = [
   {
     id: 'b1', code: 'BILL-2026-06-I', periodMonth: 'Jun 2026', status: 'Pending Approval',
-    createdBy: 'Admin User', lineIds: ['bl1', 'bl2'], totalValue: 125080, recurringCount: 1, nonRecurringCount: 1, createdAt: '2026-06-03',
+    createdBy: 'Admin User', lineIds: ['bl1', 'bl8', 'bl2'], totalValue: 146320, recurringCount: 2, nonRecurringCount: 1, createdAt: '2026-06-03',
   },
   {
     id: 'b2', code: 'BILL-2026-06-OSSPL', periodMonth: 'Jun 2026', status: 'Draft',
@@ -133,7 +148,7 @@ export const billingBatches: BillingBatch[] = [
   },
   {
     id: 'b3', code: 'BILL-2026-05-I', periodMonth: 'May 2026', status: 'Reconciliation Open',
-    createdBy: 'Admin User', lineIds: ['bl4', 'bl5', 'bl6'], totalValue: 159418, recurringCount: 3, nonRecurringCount: 0, createdAt: '2026-05-03',
+    createdBy: 'Admin User', lineIds: ['bl4', 'bl5', 'bl7', 'bl6'], totalValue: 211338, recurringCount: 4, nonRecurringCount: 0, createdAt: '2026-05-03',
   },
 ];
 
@@ -141,6 +156,7 @@ export const billingBatches: BillingBatch[] = [
 export const reconLines: ReconLine[] = [
   { billNo: 'STL-2026-04111', vendorName: 'Skyline Telecom Ltd', gross: 49560, tds: 0, net: 49560, utr: 'UTRSAMPLE0510111', paymentDate: '2026-05-14', mode: 'NEFT', match: 'matched' },
   { billNo: 'PG-APR-7781', vendorName: 'PrimeGuard Security Services', gross: 103840, tds: 880, net: 102960, utr: 'UTRSAMPLE0529778', paymentDate: '2026-05-29', mode: 'NEFT', match: 'matched' },
+  { billNo: 'PG-APR-7782', vendorName: 'PrimeGuard Security Services', gross: 51920, tds: 440, net: 51480, utr: 'UTRSAMPLE0529778', paymentDate: '2026-05-29', mode: 'NEFT', match: 'matched' },
   { billNo: 'RP-54990', vendorName: 'RapidPost Couriers', gross: 6018, tds: 102, net: 5916, utr: 'UTRSAMPLE0506549', paymentDate: '2026-05-06', mode: 'NEFT', match: 'matched' },
   { billNo: 'MCR-0426-1180', vendorName: 'Metro Car Rentals Pvt Ltd', gross: 12200, tds: 244, net: 11956, utr: 'UTRSAMPLE0512118', paymentDate: '2026-05-12', mode: 'NEFT', match: 'exception', note: 'Reference not found in this batch' },
 ];

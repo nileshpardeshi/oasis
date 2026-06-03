@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
 import { getBatch, linesForBatch, inr, categories, payingEntities, paymentPriority, daysBetween, addDays } from '@/lib/invoicing/mockData';
@@ -114,6 +114,7 @@ export default function BatchDetailPage({ params }: { params: { id: string } }) 
   const [showAdd, setShowAdd] = useState(false);
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [previewLineId, setPreviewLineId] = useState<string | null>(null);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [focusId, setFocusId] = useState<string | undefined>(seed[0]?.id);
   const [adminStatus, setAdminStatus] = useState<Record<string, AdminState>>(() => Object.fromEntries(seed.map((l) => [l.id, 'Pending'])));
   const [financeStatus, setFinanceStatus] = useState<Record<string, FinanceState>>(() => Object.fromEntries(seed.map((l) => [l.id, 'Pending'])));
@@ -189,6 +190,12 @@ export default function BatchDetailPage({ params }: { params: { id: string } }) 
   const editingLine = lines.find((l) => l.id === editingLineId) ?? null;
   const previewLine = lines.find((l) => l.id === previewLineId) ?? null;
 
+  // Group invoices by vendor — Finance pays each vendor as one combined payment (one UTR). Tracking stays per invoice.
+  const byVendor = lines.reduce((m, l) => { (m[l.vendorName] ??= []).push(l); return m; }, {} as Record<string, BillingLine[]>);
+  const vendorNames = Object.keys(byVendor);
+  const toggleVendor = (vn: string) => setCollapsed((s) => { const n = new Set(s); n.has(vn) ? n.delete(vn) : n.add(vn); return n; });
+  const toggleVendorSel = (vn: string, select: boolean) => setSelected((s) => { const n = new Set(s); byVendor[vn].forEach((l) => { select ? n.add(l.id) : n.delete(l.id); }); return n; });
+
   return (
     <>
       {previewLine && <InvoicePreviewModal line={previewLine} onClose={() => setPreviewLineId(null)} />}
@@ -262,31 +269,50 @@ export default function BatchDetailPage({ params }: { params: { id: string } }) 
             </tr>
           </thead>
           <tbody>
-            {lines.map((l) => {
-              const as = adminStatus[l.id] ?? 'Pending';
-              const fs = financeStatus[l.id] ?? 'Pending';
-              const credit = l.creditPeriodDays ?? daysBetween(l.billDate, l.dueDate);
+            {vendorNames.map((vn) => {
+              const vlines = byVendor[vn];
+              const vTotal = vlines.reduce((s, l) => s + l.totalAmount, 0);
+              const vCollapsed = collapsed.has(vn);
+              const vAllSel = vlines.every((l) => selected.has(l.id));
               return (
-                <tr key={l.id} className="row-link" onClick={() => setFocusId(l.id)} style={{ background: l.id === focus?.id ? '#eef4fb' : undefined }}>
-                  <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selected.has(l.id)} onChange={() => toggleSel(l.id)} /></td>
-                  <td>{l.vendorName}{l.isRecurring && <span className="pill st-sentfin" style={{ marginLeft: 6, fontSize: 10 }}>Recurring</span>}</td>
-                  <td className="mono">{l.billNo}<div className="attach"><Icon name="invoicing" size={12} /> {l.fileName ?? l.billNo + '.pdf'}</div></td>
-                  <td>{l.payingEntityCode}</td>
-                  <td>{l.billReceivedDate ?? l.billDate}</td>
-                  <td className="num">{credit ?? '—'}{credit != null ? 'd' : ''}</td>
-                  <td>{l.dueDate}</td>
-                  <td><PriorityPill due={l.dueDate} /></td>
-                  <td>{l.sentToFinanceOn ?? '—'}</td>
-                  <td className="num">{inr(l.totalAmount)}</td>
-                  <td><ValidationBadge status={l.validationStatus} /></td>
-                  <td><span className={`pill ${ADMIN_CLASS[as]}`}>{as}</span></td>
-                  <td><span className={`pill ${FIN_CLASS[fs]}`}>{FIN_LABEL[fs]}</span></td>
-                  <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
-                    <button className="btn btn--ghost btn--sm" onClick={() => setPreviewLineId(l.id)}>View</button>{' '}
-                    <button className="btn btn--ghost btn--sm" onClick={() => { setEditingLineId(l.id); setShowAdd(false); }}>Edit</button>{' '}
-                    <button className="btn btn--ghost btn--sm" style={{ color: 'var(--danger)' }} onClick={() => deleteLine(l.id)}>Delete</button>
-                  </td>
-                </tr>
+                <Fragment key={vn}>
+                  <tr className="group-row">
+                    <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={vAllSel} onChange={() => toggleVendorSel(vn, !vAllSel)} aria-label={`select ${vn}`} /></td>
+                    <td colSpan={8}>
+                      <button className="acc-toggle" onClick={() => toggleVendor(vn)} aria-label="toggle">{vCollapsed ? '▸' : '▾'}</button>
+                      <b>{vn}</b> <span className="muted" style={{ fontSize: 12 }}>· {vlines.length} invoice(s)</span>
+                    </td>
+                    <td className="num"><b>{inr(vTotal)}</b></td>
+                    <td colSpan={4}><span className="muted" style={{ fontSize: 11.5 }}>Finance pays this vendor in <b>1 payment · 1 UTR</b></span></td>
+                  </tr>
+                  {!vCollapsed && vlines.map((l) => {
+                    const as = adminStatus[l.id] ?? 'Pending';
+                    const fs = financeStatus[l.id] ?? 'Pending';
+                    const credit = l.creditPeriodDays ?? daysBetween(l.billDate, l.dueDate);
+                    return (
+                      <tr key={l.id} className="row-link" onClick={() => setFocusId(l.id)} style={{ background: l.id === focus?.id ? '#eef4fb' : undefined }}>
+                        <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selected.has(l.id)} onChange={() => toggleSel(l.id)} /></td>
+                        <td style={{ paddingLeft: 22 }}>{l.vendorName}{l.isRecurring && <span className="pill st-sentfin" style={{ marginLeft: 6, fontSize: 10 }}>Recurring</span>}</td>
+                        <td className="mono">{l.billNo}<div className="attach"><Icon name="invoicing" size={12} /> {l.fileName ?? l.billNo + '.pdf'}</div></td>
+                        <td>{l.payingEntityCode}</td>
+                        <td>{l.billReceivedDate ?? l.billDate}</td>
+                        <td className="num">{credit ?? '—'}{credit != null ? 'd' : ''}</td>
+                        <td>{l.dueDate}</td>
+                        <td><PriorityPill due={l.dueDate} /></td>
+                        <td>{l.sentToFinanceOn ?? '—'}</td>
+                        <td className="num">{inr(l.totalAmount)}</td>
+                        <td><ValidationBadge status={l.validationStatus} /></td>
+                        <td><span className={`pill ${ADMIN_CLASS[as]}`}>{as}</span></td>
+                        <td><span className={`pill ${FIN_CLASS[fs]}`}>{FIN_LABEL[fs]}</span></td>
+                        <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
+                          <button className="btn btn--ghost btn--sm" onClick={() => setPreviewLineId(l.id)}>View</button>{' '}
+                          <button className="btn btn--ghost btn--sm" onClick={() => { setEditingLineId(l.id); setShowAdd(false); }}>Edit</button>{' '}
+                          <button className="btn btn--ghost btn--sm" style={{ color: 'var(--danger)' }} onClick={() => deleteLine(l.id)}>Delete</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </Fragment>
               );
             })}
             {lines.length === 0 && <tr><td colSpan={14} style={{ textAlign: 'center', padding: 24, color: 'var(--text-soft)' }}>No invoices in this batch. Use “Add invoice”.</td></tr>}

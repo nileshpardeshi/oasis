@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { billingBatches, reconLines, inr } from '@/lib/invoicing/mockData';
 
@@ -12,8 +12,12 @@ export default function ReconciliationPage() {
 
   const matched = reconLines.filter((r) => r.match === 'matched');
   const exceptions = reconLines.filter((r) => r.match !== 'matched');
-  const rows = tab === 'matched' ? matched : exceptions;
   const netMatched = matched.reduce((s, r) => s + r.net, 0);
+  // Matched lines grouped by vendor — Finance pays each vendor as one combined payment (one UTR).
+  const matchedGroups = Object.values(matched.reduce((m, r) => {
+    (m[r.vendorName] ??= { vendor: r.vendorName, utr: r.utr, rows: [] as typeof matched }).rows.push(r);
+    return m;
+  }, {} as Record<string, { vendor: string; utr: string; rows: typeof matched }>));
 
   return (
     <>
@@ -56,7 +60,36 @@ export default function ReconciliationPage() {
                 </tr>
               </thead>
               <tbody>
-                {rows.map((r, i) => (
+                {tab === 'matched' ? matchedGroups.map((g) => {
+                  const gGross = g.rows.reduce((s, r) => s + r.gross, 0);
+                  const gTds = g.rows.reduce((s, r) => s + r.tds, 0);
+                  const gNet = g.rows.reduce((s, r) => s + r.net, 0);
+                  return (
+                    <Fragment key={g.vendor}>
+                      <tr className="group-row">
+                        <td colSpan={2}><b>{g.vendor}</b> <span className="muted" style={{ fontSize: 12 }}>· {g.rows.length} bill(s)</span></td>
+                        <td className="num">{inr(gGross)}</td>
+                        <td className="num">{gTds ? inr(gTds) : '—'}</td>
+                        <td className="num"><b>{inr(gNet)}</b></td>
+                        <td className="mono">{g.utr}</td>
+                        <td colSpan={3}><span className="muted" style={{ fontSize: 11.5 }}>1 combined payment · 1 UTR</span></td>
+                      </tr>
+                      {g.rows.map((r, i) => (
+                        <tr key={i}>
+                          <td className="mono" style={{ paddingLeft: 22 }}>{r.billNo}</td>
+                          <td>{r.vendorName}</td>
+                          <td className="num">{inr(r.gross)}</td>
+                          <td className="num">{r.tds ? inr(r.tds) : '—'}</td>
+                          <td className="num">{inr(r.net)}</td>
+                          <td className="mono">{r.utr}</td>
+                          <td>{r.paymentDate}</td>
+                          <td>{r.mode}</td>
+                          <td><span className="pill st-paid">Matched</span></td>
+                        </tr>
+                      ))}
+                    </Fragment>
+                  );
+                }) : exceptions.map((r, i) => (
                   <tr key={i}>
                     <td className="mono">{r.billNo}</td>
                     <td>{r.vendorName}</td>
@@ -66,9 +99,7 @@ export default function ReconciliationPage() {
                     <td className="mono">{r.utr}</td>
                     <td>{r.paymentDate}</td>
                     <td>{r.mode}</td>
-                    <td>{r.match === 'matched'
-                      ? <span className="pill st-paid">Matched</span>
-                      : <span className="pill st-hold" title={r.note}>Exception</span>}</td>
+                    <td><span className="pill st-hold" title={r.note}>Exception</span></td>
                   </tr>
                 ))}
               </tbody>

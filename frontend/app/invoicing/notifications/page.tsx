@@ -4,13 +4,21 @@ import { useState } from 'react';
 import { Icon } from '@/components/ui/Icon';
 import { billingLines, notificationLog, notificationSchedule, inr } from '@/lib/invoicing/mockData';
 import { NotifBadge } from '@/components/invoicing/ui';
+import type { BillingLine } from '@/lib/invoicing/types';
 
-// Manual mode lists only Paid + Not Notified bills (the dedup rule).
+// Manual mode lists Paid + Not-Notified bills (dedup rule), GROUPED BY VENDOR — Finance pays each
+// vendor as one combined payment (one UTR), so each vendor gets ONE consolidated email.
 const pending = billingLines.filter((l) => l.paymentStatus === 'Paid' && l.notificationStatus === 'Not Notified');
+const pendingGroups = Object.values(
+  pending.reduce((m, l) => {
+    (m[l.vendorName] ??= { vendor: l.vendorName, bills: [] as BillingLine[], utr: l.utr ?? '—' }).bills.push(l);
+    return m;
+  }, {} as Record<string, { vendor: string; bills: BillingLine[]; utr: string }>),
+);
 
 export default function NotificationsPage() {
   const [mode, setMode] = useState<'manual' | 'scheduled'>('manual');
-  const [sel, setSel] = useState<Set<string>>(new Set(pending.map((p) => p.id)));
+  const [sel, setSel] = useState<Set<string>>(new Set(pendingGroups.map((g) => g.vendor)));
   const [sent, setSent] = useState(false);
 
   // schedule form
@@ -30,33 +38,36 @@ export default function NotificationsPage() {
 
       {mode === 'manual' ? (
         <>
-          <p className="sub-hint">Only <b>Paid</b> bills <b>not yet notified</b> are listed — a vendor is never emailed twice for the same bill.</p>
+          <p className="sub-hint">Only <b>Paid</b> bills <b>not yet notified</b> are listed, <b>grouped per vendor</b> — Finance pays each vendor in one combined payment (one UTR), so each vendor receives <b>one consolidated email</b> (all their bills + combined total). A vendor is never emailed twice for the same bill.</p>
           {sent ? (
-            <div className="reco ok">✓ Sent payment confirmation to {sel.size} vendor(s). Those bills are now marked <b>Notified</b> and won’t appear here again.</div>
-          ) : pending.length === 0 ? (
+            <div className="reco ok">✓ Sent <b>one consolidated payment email</b> to {sel.size} vendor(s) — each lists all their paid bills, the combined net amount, and the single UTR. Those bills are now marked <b>Notified</b>.</div>
+          ) : pendingGroups.length === 0 ? (
             <div className="empty"><div className="empty__icon"><Icon name="check" size={36} /></div><h2>All caught up</h2><p>No paid bills are awaiting notification.</p></div>
           ) : (
             <>
               <div className="table-card" style={{ marginBottom: 14 }}>
                 <table className="data-table">
-                  <thead><tr><th style={{ width: 36 }}></th><th>Vendor</th><th>Bill no</th><th className="num">Net paid</th><th>UTR</th><th>Paid on</th></tr></thead>
+                  <thead><tr><th style={{ width: 36 }}></th><th>Vendor</th><th>Invoices (combined)</th><th className="num">Net paid (total)</th><th>UTR (single)</th><th>Paid on</th></tr></thead>
                   <tbody>
-                    {pending.map((l) => (
-                      <tr key={l.id} className="row-link" onClick={() => toggle(l.id)}>
-                        <td><input type="checkbox" checked={sel.has(l.id)} onChange={() => toggle(l.id)} /></td>
-                        <td>{l.vendorName}</td>
-                        <td className="mono">{l.billNo}</td>
-                        <td className="num">{inr(l.paidAmount ?? l.totalAmount)}</td>
-                        <td className="mono">{l.utr}</td>
-                        <td>{l.paymentDate}</td>
-                      </tr>
-                    ))}
+                    {pendingGroups.map((g) => {
+                      const total = g.bills.reduce((s, b) => s + (b.paidAmount ?? b.totalAmount), 0);
+                      return (
+                        <tr key={g.vendor} className="row-link" onClick={() => toggle(g.vendor)}>
+                          <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={sel.has(g.vendor)} onChange={() => toggle(g.vendor)} /></td>
+                          <td>{g.vendor}</td>
+                          <td>{g.bills.length} — <span className="mono" style={{ fontSize: 11.5 }}>{g.bills.map((b) => b.billNo).join(', ')}</span></td>
+                          <td className="num">{inr(total)}</td>
+                          <td className="mono">{g.utr}</td>
+                          <td>{g.bills[0].paymentDate}</td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock preview:\n\nDear vendor, your payment has been processed.\nBill: <bill no>, Net: <amount>, UTR: <utr>, Date: <date>, Mode: NEFT.')}>Preview message</button>
-                <button className="btn btn--primary btn--sm" disabled={sel.size === 0} onClick={() => setSent(true)}><Icon name="bell" size={15} /> Send to {sel.size} vendor(s)</button>
+                <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock preview (one email per vendor):\n\nDear <vendor>, your payment has been processed.\nBills: <all bill nos>\nCombined net: <total>   TDS: <total>\nUTR: <single utr>   Date: <date>   Mode: NEFT')}>Preview message</button>
+                <button className="btn btn--primary btn--sm" disabled={sel.size === 0} onClick={() => setSent(true)}><Icon name="bell" size={15} /> Send {sel.size} vendor email(s)</button>
               </div>
             </>
           )}

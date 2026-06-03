@@ -257,6 +257,7 @@ flowchart TB
 - **Idempotent:** re-uploading the same report does not double-update (dedupe by UTR + reference).
 - **Multi-entity:** report is per company (e.g., "- OSPL"); reconcile within the same `payingEntity`.
 - **Input (this phase):** the finance report is **manually uploaded** by the user (Excel / Word / email `.eml`/`.msg`); no Finance-app API or mailbox auto-ingest yet.
+- **Presentation:** matched results are shown **grouped by vendor** (combined net + single UTR), expandable to per-bill — mirroring the finance report's structure. (Vendor grouping also drives the batch view and notifications.)
 
 ---
 
@@ -485,6 +486,7 @@ stateDiagram-v2
 **Batch list:** search/filter (code/period, entity, status); per batch **View / Edit / Delete**; the entity column is **derived from the batch's invoices** (a batch may span entities).
 
 **Batch view (invoices grid)** — horizontally scrollable, billing-sheet-style columns: Vendor (+ recurring tag), Bill no (+ attached original file), Entity, **Received, Credit, Due, Payment Priority (I/II), Sent-to-Finance**, Total, Validation, **Admin approval**, **Finance approval**, Actions.
+- **Vendor grouping (accordion):** invoices are grouped per vendor (collapsible) with the **per-vendor total due** and a "Finance pays this vendor in **1 payment · 1 UTR**" cue — because Finance combines a vendor's invoices into a single payment. **Tracking stays per invoice** (approval, validation, status); grouping aids finance, reconciliation & notification.
 - Per invoice: **View** (preview original invoice + **Download**, F5), **Edit / reupload**, **Delete**; **Add invoice** (upload a missing invoice into the batch).
 - **Bulk multiselect** approve/reject — no approving one-by-one.
 - **Validation-gate** summary (§10.10) + **Smart Approval Assistant** (§10.11) for the focused invoice.
@@ -499,11 +501,12 @@ stateDiagram-v2
 
 ### 13.5 Reconciliation (F10, F11, F12)
 - **Manually upload** the finance report (Excel / Word / email file) **against a batch**.
-- Reconciliation result: **Matched / Unmatched / Exceptions** tabs; per-line proposed updates (UTR, date, net, TDS, mode).
+- Reconciliation result: **Matched / Unmatched / Exceptions** tabs; per-line proposed updates (UTR, date, net, TDS, mode). **Matched results are grouped by vendor** — each vendor shows the **combined net + single UTR** (matching the finance report), expandable to the per-bill lines.
 - **Review & Approve** the status update (maker–checker) → commits `Paid`.
 
 ### 13.6 Vendor Notification (F13, F18)
-- **Manual send:** post-reconcile, select paid vendors/bills (by default only those **not yet notified** are listed) → preview AI-composed message (configurable template) → send email → logged.
+- **Grouped per vendor:** because Finance pays each vendor in **one combined payment (one UTR)**, the manual list is **grouped by vendor** — each vendor gets **one consolidated email** listing all their paid bills, the **combined net**, and the **single UTR** (never one email per bill).
+- **Manual send:** post-reconcile, select paid vendors (by default only those **not yet notified**) → preview AI-composed message (configurable template) → send one email per vendor → logged.
 - **Scheduled send:** configure **frequency (daily / weekly / monthly)** + **time & timezone**; the scheduler auto-scans `Paid`, not-yet-notified bills, sends one consolidated email per vendor, and marks them notified.
 - A **notification status** column (Not Notified / Sent / Failed) is shown on records; failed sends can be retried.
 
@@ -613,7 +616,7 @@ All exportable (Excel/PDF/CSV); built on the analytics layer from the master pla
 
 ## 17. Notifications & Reminders (F13, F17)
 
-**Vendor (outbound, configurable) — F13 / F18.** Payment confirmation with bill no(s), gross, TDS, net, UTR, date, mode — **email only** (WhatsApp deferred), AI-composed from templates, previewed before send, logged. Two delivery modes:
+**Vendor (outbound, configurable) — F13 / F18.** Payment confirmation with bill no(s), gross, TDS, net, UTR, date, mode — **email only** (WhatsApp deferred), AI-composed from templates, previewed before send, logged. **Grouped per vendor:** one consolidated email per vendor (all paid bills + combined net + single UTR), matching Finance's combined per-vendor payment. Two delivery modes:
 
 - **(a) Manual** — from the UI (§13.6), the user selects paid vendors/bills and triggers the email on demand.
 - **(b) Scheduled** — a configurable **scheduler** (frequency = **daily / weekly / monthly**, at a **specific time & timezone**) runs automatically: it **scans `Paid` bills not yet notified**, groups them **per vendor**, sends one consolidated email per vendor, then stamps them notified.
