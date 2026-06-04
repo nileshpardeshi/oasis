@@ -33,6 +33,19 @@
 .btn--sm { padding: 6px 11px; font-size: 12.5px; border-radius: 9px; }
 .btn[disabled] { opacity: .5; cursor: not-allowed; }
 
+/* compact square icon-only action buttons (used in table "Actions" cells) */
+.btn--icon { width: 32px; height: 32px; min-width: 0; padding: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; }
+.btn--icon svg { display: block; }
+.btn--ghost.btn--icon:hover { background: #eef4fb; color: var(--brand-blue); }
+.btn--ghost.btn--icon.is-danger { color: var(--danger); }
+.btn--ghost.btn--icon.is-danger:hover { background: var(--danger-tint, #fdecec); color: var(--danger); }
+.row-actions { display: inline-flex; gap: 6px; align-items: center; }
+
+/* clearly-visible Back affordance for drill-in / flow pages */
+.btn--back { background: var(--surface); border: 1px solid var(--border-strong); color: var(--brand-blue); font-weight: 600; }
+.btn--back:hover { background: #eef4fb; border-color: var(--brand-blue); }
+.page-back { margin-bottom: 14px; }
+
 /* tables */
 .table-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow-sm); overflow: hidden; }
 .data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -177,6 +190,10 @@
 /* vendor-grouped (accordion) rows */
 .group-row td { background: #eef4fb; border-top: 2px solid var(--border-strong); }
 .group-row b { font-size: 13.5px; }
+.row-link { cursor: pointer; }
+/* a clicked/focused invoice row — visually distinct from the blue vendor (group) row */
+.data-table tbody tr.row-focus td { background: #fbfdff; }
+.data-table tbody tr.row-focus td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 .acc-toggle { border: 0; background: transparent; cursor: pointer; font-size: 13px; color: var(--brand-blue); margin-right: 8px; font-weight: 700; }
 .vgroup { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow-sm); margin-bottom: 12px; overflow: hidden; }
 .vgroup__head { display: flex; align-items: center; gap: 12px; padding: 12px 14px; cursor: pointer; }
@@ -184,3 +201,4 @@
 .vgroup__total { margin-left: auto; text-align: right; }
 .vgroup__total b { font-size: 15px; }
 .vgroup__total span { font-size: 11px; color: var(--text-muted); display: block; }
+.master-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px; background: #eef4fb; border-bottom: 1px solid var(--border); flex-wrap: wrap; }

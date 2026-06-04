@@ -139,26 +139,32 @@ export const billingLines: BillingLine[] = [
 
 export const billingBatches: BillingBatch[] = [
   {
-    id: 'b1', code: 'BILL-2026-06-I', periodMonth: 'Jun 2026', status: 'Pending Approval',
+    id: 'b1', code: 'BILL-03-JUN-2026-I', periodMonth: 'Jun 2026', status: 'Pending Approval',
     createdBy: 'Admin User', lineIds: ['bl1', 'bl8', 'bl2'], totalValue: 146320, recurringCount: 2, nonRecurringCount: 1, createdAt: '2026-06-03',
   },
   {
-    id: 'b2', code: 'BILL-2026-06-OSSPL', periodMonth: 'Jun 2026', status: 'Draft',
+    id: 'b2', code: 'BILL-03-JUN-2026-II', periodMonth: 'Jun 2026', status: 'Draft',
     createdBy: 'Admin User', lineIds: ['bl3'], totalValue: 19425, recurringCount: 0, nonRecurringCount: 1, createdAt: '2026-06-03',
   },
   {
-    id: 'b3', code: 'BILL-2026-05-I', periodMonth: 'May 2026', status: 'Reconciliation Open',
-    createdBy: 'Admin User', lineIds: ['bl4', 'bl5', 'bl7', 'bl6'], totalValue: 211338, recurringCount: 4, nonRecurringCount: 0, createdAt: '2026-05-03',
+    id: 'b3', code: 'BILL-03-MAY-2026-I', periodMonth: 'May 2026', status: 'Reconciliation Open',
+    createdBy: 'Admin User', lineIds: ['bl4', 'bl5', 'bl7'], totalValue: 205320, recurringCount: 3, nonRecurringCount: 0, createdAt: '2026-05-03',
+  },
+  {
+    // April master file — RapidPost (received 29-Apr) was paid in the MAY run → demonstrates cross-month reconciliation.
+    id: 'b4', code: 'BILL-29-APR-2026-I', periodMonth: 'Apr 2026', status: 'Reconciliation Open',
+    createdBy: 'Admin User', lineIds: ['bl6'], totalValue: 6018, recurringCount: 1, nonRecurringCount: 0, createdAt: '2026-04-29',
   },
 ];
 
-// Reconciliation preview for a finance report uploaded against batch b3
+// Reconciliation preview for ONE monthly finance payment report (May 2026 payments).
+// References resolve to invoices across master months — note RP-54990 is an Apr-master invoice paid in the May run (cross-month).
 export const reconLines: ReconLine[] = [
   { billNo: 'STL-2026-04111', vendorName: 'Skyline Telecom Ltd', gross: 49560, tds: 0, net: 49560, utr: 'UTRSAMPLE0510111', paymentDate: '2026-05-14', mode: 'NEFT', match: 'matched' },
   { billNo: 'PG-APR-7781', vendorName: 'PrimeGuard Security Services', gross: 103840, tds: 880, net: 102960, utr: 'UTRSAMPLE0529778', paymentDate: '2026-05-29', mode: 'NEFT', match: 'matched' },
   { billNo: 'PG-APR-7782', vendorName: 'PrimeGuard Security Services', gross: 51920, tds: 440, net: 51480, utr: 'UTRSAMPLE0529778', paymentDate: '2026-05-29', mode: 'NEFT', match: 'matched' },
   { billNo: 'RP-54990', vendorName: 'RapidPost Couriers', gross: 6018, tds: 102, net: 5916, utr: 'UTRSAMPLE0506549', paymentDate: '2026-05-06', mode: 'NEFT', match: 'matched' },
-  { billNo: 'MCR-0426-1180', vendorName: 'Metro Car Rentals Pvt Ltd', gross: 12200, tds: 244, net: 11956, utr: 'UTRSAMPLE0512118', paymentDate: '2026-05-12', mode: 'NEFT', match: 'exception', note: 'Reference not found in this batch' },
+  { billNo: 'MCR-0426-1180', vendorName: 'Metro Car Rentals Pvt Ltd', gross: 12200, tds: 244, net: 11956, utr: 'UTRSAMPLE0512118', paymentDate: '2026-05-12', mode: 'NEFT', match: 'exception', note: 'Reference not found in any open master file' },
 ];
 
 export const notificationLog: NotificationLogItem[] = [
@@ -188,7 +194,25 @@ export const addDays = (from: string, days: number) => {
 export const daysBetween = (from?: string, to?: string): number | undefined =>
   from && to ? Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000) : undefined;
 
+const MONTHS3 = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+// The Master file is monthly and is keyed by the invoice RECEIVED date → "MMM YYYY".
+// Multiple daily bill files (batches) of the same received-month roll up into one master.
+export const masterMonthOf = (dateStr?: string): string => {
+  if (!dateStr) return '—';
+  const d = new Date(dateStr);
+  return `${MONTHS3[d.getMonth()]} ${d.getFullYear()}`;
+};
+// Unique batch code: BILL-DD-MON-YYYY-<roman seq within that month>, e.g. BILL-25-MAY-2026-I.
+// DD-MON-YYYY = the day the bill file is prepared/shared; the roman numeral sequences batches within the master month.
+export const batchCode = (preparedOn: string, seqWithinMonth: number): string => {
+  const d = new Date(preparedOn);
+  const roman = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'][seqWithinMonth - 1] ?? String(seqWithinMonth);
+  return `BILL-${String(d.getDate()).padStart(2, '0')}-${MONTHS3[d.getMonth()].toUpperCase()}-${d.getFullYear()}-${roman}`;
+};
+
 export const getBatch = (id: string) => billingBatches.find((b) => b.id === id);
+// The bill file (batch) a given invoice line belongs to — used by Search to show Batch ID / Billing Month.
+export const batchForLine = (lineId: string) => billingBatches.find((b) => b.lineIds.includes(lineId));
 export const linesForBatch = (id: string): BillingLine[] => {
   const b = getBatch(id);
   if (!b) return [];

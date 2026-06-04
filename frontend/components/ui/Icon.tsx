@@ -26,7 +26,14 @@ export type IconName =
   | 'arrowDown'
   | 'check'
   | 'alert'
-  | 'info';
+  | 'info'
+  | 'eye'
+  | 'edit'
+  | 'trash'
+  | 'download'
+  | 'upload'
+  | 'arrowLeft'
+  | 'close';
 
 const PATHS: Record<IconName, React.ReactNode> = {
   dashboard: (
@@ -148,6 +155,40 @@ const PATHS: Record<IconName, React.ReactNode> = {
       <path d="M12 9v4M12 17h.01" />
     </>
   ),
+  eye: (
+    <>
+      <path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z" />
+      <circle cx="12" cy="12" r="3" />
+    </>
+  ),
+  edit: (
+    <>
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+    </>
+  ),
+  trash: (
+    <>
+      <path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2m2 0v14a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V6" />
+      <path d="M10 11v6M14 11v6" />
+    </>
+  ),
+  download: (
+    <>
+      <path d="M12 3v12" />
+      <path d="m7 10 5 5 5-5" />
+      <path d="M5 21h14" />
+    </>
+  ),
+  upload: (
+    <>
+      <path d="M12 15V3" />
+      <path d="m7 8 5-5 5 5" />
+      <path d="M5 21h14" />
+    </>
+  ),
+  arrowLeft: <path d="M19 12H5M12 19l-7-7 7-7" />,
+  close: <path d="M18 6 6 18M6 6l12 12" />,
 };
 
 export interface IconProps {

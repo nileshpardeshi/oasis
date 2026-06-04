@@ -56,7 +56,7 @@ function ReviewCard({ invoice, index, total, confirmed, onConfirm, onPrev }: {
         <div className="pdf-pane">
           <div className="panel__head">
             <div className="panel__title"><Icon name="invoicing" size={16} /> Original invoice</div>
-            <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock: download ' + invoice.fileName)}><Icon name="invoicing" size={14} /> Download</button>
+            <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock: download ' + invoice.fileName)}><Icon name="download" size={14} /> Download</button>
           </div>
           <div className="pdf-stub">
             <div style={{ textAlign: 'center' }}>
@@ -122,7 +122,7 @@ function ReviewCard({ invoice, index, total, confirmed, onConfirm, onPrev }: {
           </div>
           <div className="field-row">
             <label>Due date (auto)</label>
-            <div><b>{dueDate}</b> &nbsp; <span className={`pill ${priority === 'I' ? 'st-process' : 'st-sentfin'}`}>Priority {priority}</span></div>
+            <div><b>{dueDate}</b> &nbsp; <span className={`pill ${priority === 'I' ? 'st-process' : 'st-sentfin'}`}>Cycle {priority}</span></div>
           </div>
 
           {arithmeticOff && <div className="warn-inline"><Icon name="alert" size={15} /> Basic + GST ({(basic + gst).toLocaleString('en-IN')}) ≠ Total ({totalAmt.toLocaleString('en-IN')}) — please check.</div>}
@@ -140,7 +140,7 @@ function ReviewCard({ invoice, index, total, confirmed, onConfirm, onPrev }: {
         ) : (
           <Link className="btn btn--success" href="/invoicing/batches" onClick={onConfirm}><Icon name="check" size={16} strokeWidth={2.2} /> Confirm &amp; go to billing batch</Link>
         )}
-        <Link className="btn btn--ghost" href="/invoicing/upload">Back to upload</Link>
+        <Link className="btn btn--back" href="/invoicing/upload"><Icon name="arrowLeft" size={16} strokeWidth={2.2} /> Back to upload</Link>
       </div>
     </>
   );
@@ -162,6 +162,9 @@ export default function ReviewPage() {
 
   return (
     <>
+      <div className="page-back">
+        <Link className="btn btn--back btn--sm" href="/invoicing/upload"><Icon name="arrowLeft" size={15} strokeWidth={2.2} /> Back to Upload</Link>
+      </div>
       <Stepper />
       <ReviewCard
         key={inv.id}

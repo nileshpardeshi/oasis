@@ -18,7 +18,7 @@ const TODAY = '2026-06-04';
 
 function PriorityPill({ due }: { due?: string }) {
   const p = paymentPriority(due);
-  return <span className={`pill ${p === 'I' ? 'st-process' : 'st-sentfin'}`}>Priority {p}</span>;
+  return <span className={`pill ${p === 'I' ? 'st-process' : 'st-sentfin'}`}>Cycle {p}</span>;
 }
 
 function InvoicePreviewModal({ line, onClose }: { line: BillingLine; onClose: () => void }) {
@@ -29,8 +29,8 @@ function InvoicePreviewModal({ line, onClose }: { line: BillingLine; onClose: ()
         <div className="inv-modal__head">
           <div className="panel__title"><Icon name="invoicing" size={16} /> {fileName}</div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <button className="btn btn--primary btn--sm" onClick={() => alert('Mock: downloading ' + fileName)}><Icon name="invoicing" size={15} /> Download</button>
-            <button className="btn btn--ghost btn--sm" onClick={onClose}>Close</button>
+            <button className="btn btn--primary btn--sm" onClick={() => alert('Mock: downloading ' + fileName)}><Icon name="download" size={15} /> Download</button>
+            <button className="btn btn--ghost btn--icon" title="Close" aria-label="Close" onClick={onClose}><Icon name="close" size={16} /></button>
           </div>
         </div>
         <div className="inv-modal__body">
@@ -59,7 +59,7 @@ function Assistant({ line }: { line: BillingLine }) {
       <div className="metric"><span>This bill</span><span>{inr(line.totalAmount)}</span></div>
       <div className="metric"><span>6-month average</span><span>{inr(avg)}</span></div>
       <div className="metric"><span>Variance</span><span style={{ color: pct > 25 ? 'var(--danger)' : 'var(--text)' }}>{pct > 0 ? '+' : ''}{pct}%</span></div>
-      <div className="metric"><span>Due / priority</span><span>{line.dueDate} · <PriorityPill due={line.dueDate} /></span></div>
+      <div className="metric"><span>Due / cycle</span><span>{line.dueDate} · <PriorityPill due={line.dueDate} /></span></div>
       <div className="metric" style={{ borderBottom: 0 }}><span>Validation</span><ValidationBadge status={line.validationStatus} /></div>
       {line.validationNotes?.length ? (
         <ul style={{ margin: '8px 0 0', paddingLeft: 18, fontSize: 12, color: 'var(--text-muted)' }}>
@@ -115,7 +115,7 @@ export default function BatchDetailPage({ params }: { params: { id: string } }) 
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [previewLineId, setPreviewLineId] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
-  const [focusId, setFocusId] = useState<string | undefined>(seed[0]?.id);
+  const [focusId, setFocusId] = useState<string | undefined>(undefined);
   const [adminStatus, setAdminStatus] = useState<Record<string, AdminState>>(() => Object.fromEntries(seed.map((l) => [l.id, 'Pending'])));
   const [financeStatus, setFinanceStatus] = useState<Record<string, FinanceState>>(() => Object.fromEntries(seed.map((l) => [l.id, 'Pending'])));
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -127,7 +127,7 @@ export default function BatchDetailPage({ params }: { params: { id: string } }) 
   const [financeMsg, setFinanceMsg] = useState<string | null>(null);
 
   if (!batch) {
-    return <div className="empty"><div className="empty__icon"><Icon name="invoicing" size={36} /></div><h2>Batch not found</h2><p><Link className="panel__link" href="/invoicing/batches">Back to batches</Link></p></div>;
+    return <div className="empty"><div className="empty__icon"><Icon name="invoicing" size={36} /></div><h2>Batch not found</h2><p><Link className="btn btn--back btn--sm" href="/invoicing/batches"><Icon name="arrowLeft" size={15} strokeWidth={2.2} /> Back to Billing Batches</Link></p></div>;
   }
 
   const focus = lines.find((l) => l.id === focusId) ?? lines[0];
@@ -200,9 +200,12 @@ export default function BatchDetailPage({ params }: { params: { id: string } }) 
     <>
       {previewLine && <InvoicePreviewModal line={previewLine} onClose={() => setPreviewLineId(null)} />}
 
+      <div className="page-back">
+        <Link className="btn btn--back btn--sm" href="/invoicing/batches"><Icon name="arrowLeft" size={15} strokeWidth={2.2} /> Back to Billing Batches</Link>
+      </div>
+
       <div className="toolbar">
-        <Link className="panel__link" href="/invoicing/batches">← Batches</Link>
-        <h3 className="section-title" style={{ margin: '0 0 0 6px' }}>{batch.code}</h3>
+        <h3 className="section-title" style={{ margin: 0 }}>{batch.code}</h3>
         <BatchStatusBadge status={batchStatus} />
         <div className="spacer" />
         <span className="muted" style={{ fontSize: 12 }}>View as (demo):</span>
@@ -211,8 +214,8 @@ export default function BatchDetailPage({ params }: { params: { id: string } }) 
           <button className={role === 'finance' ? 'active' : ''} onClick={() => { setRole('finance'); setSelected(new Set()); }}>Finance</button>
         </div>
         <button className="btn btn--primary btn--sm" onClick={() => { setShowAdd((s) => !s); setEditingLineId(null); }}><Icon name="plus" size={15} strokeWidth={2.2} /> Add invoice</button>
-        <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock: download Excel (.xlsx)')}><Icon name="invoicing" size={15} /> Excel</button>
-        <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock: download PDF')}><Icon name="invoicing" size={15} /> PDF</button>
+        <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock: download Excel (.xlsx)')}><Icon name="download" size={15} /> Excel</button>
+        <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock: download PDF')}><Icon name="download" size={15} /> PDF</button>
       </div>
 
       {showAdd && <LineForm initial={null} onSubmit={handleAdd} onClose={() => setShowAdd(false)} />}
@@ -224,7 +227,7 @@ export default function BatchDetailPage({ params }: { params: { id: string } }) 
         <div><b>{inr(gst)}</b><span>GST</span></div>
         <div><b>{inr(total)}</b><span>Total</span></div>
         <div><b>{entities.join(', ') || '—'}</b><span>Entities (per invoice)</span></div>
-        <div><b>{batch.periodMonth}</b><span>Period</span></div>
+        <div><b>{batch.periodMonth}</b><span>Billing Month</span></div>
       </div>
 
       <div className="notice" style={{ background: fails ? 'var(--danger-tint)' : warns ? '#fef3cd' : 'var(--success-tint)', borderColor: 'transparent', color: 'var(--text)' }}>
@@ -264,7 +267,7 @@ export default function BatchDetailPage({ params }: { params: { id: string } }) 
           <thead>
             <tr>
               <th style={{ width: 34 }}><input type="checkbox" checked={allSelected} onChange={toggleAll} aria-label="select all" /></th>
-              <th>Vendor</th><th>Bill no</th><th>Entity</th><th>Received</th><th className="num">Credit</th><th>Due</th><th>Priority</th><th>Sent to Fin.</th>
+              <th>Vendor</th><th>Bill no</th><th>Entity</th><th>Received</th><th className="num">Credit</th><th>Due</th><th>Payment Cycle</th><th>Sent to Fin.</th>
               <th className="num">Total</th><th>Validation</th><th>Admin</th><th>Finance</th><th>Actions</th>
             </tr>
           </thead>
@@ -290,7 +293,7 @@ export default function BatchDetailPage({ params }: { params: { id: string } }) 
                     const fs = financeStatus[l.id] ?? 'Pending';
                     const credit = l.creditPeriodDays ?? daysBetween(l.billDate, l.dueDate);
                     return (
-                      <tr key={l.id} className="row-link" onClick={() => setFocusId(l.id)} style={{ background: l.id === focus?.id ? '#eef4fb' : undefined }}>
+                      <tr key={l.id} className={'row-link' + (l.id === focusId ? ' row-focus' : '')} onClick={() => setFocusId(l.id)}>
                         <td onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selected.has(l.id)} onChange={() => toggleSel(l.id)} /></td>
                         <td style={{ paddingLeft: 22 }}>{l.vendorName}{l.isRecurring && <span className="pill st-sentfin" style={{ marginLeft: 6, fontSize: 10 }}>Recurring</span>}</td>
                         <td className="mono">{l.billNo}<div className="attach"><Icon name="invoicing" size={12} /> {l.fileName ?? l.billNo + '.pdf'}</div></td>
@@ -305,9 +308,11 @@ export default function BatchDetailPage({ params }: { params: { id: string } }) 
                         <td><span className={`pill ${ADMIN_CLASS[as]}`}>{as}</span></td>
                         <td><span className={`pill ${FIN_CLASS[fs]}`}>{FIN_LABEL[fs]}</span></td>
                         <td onClick={(e) => e.stopPropagation()} style={{ whiteSpace: 'nowrap' }}>
-                          <button className="btn btn--ghost btn--sm" onClick={() => setPreviewLineId(l.id)}>View</button>{' '}
-                          <button className="btn btn--ghost btn--sm" onClick={() => { setEditingLineId(l.id); setShowAdd(false); }}>Edit</button>{' '}
-                          <button className="btn btn--ghost btn--sm" style={{ color: 'var(--danger)' }} onClick={() => deleteLine(l.id)}>Delete</button>
+                          <div className="row-actions">
+                            <button className="btn btn--ghost btn--icon" title="View original invoice" aria-label="View original invoice" onClick={() => setPreviewLineId(l.id)}><Icon name="eye" size={16} /></button>
+                            <button className="btn btn--ghost btn--icon" title="Edit / reupload" aria-label="Edit or reupload" onClick={() => { setEditingLineId(l.id); setShowAdd(false); }}><Icon name="edit" size={16} /></button>
+                            <button className="btn btn--ghost btn--icon is-danger" title="Delete invoice" aria-label="Delete invoice" onClick={() => deleteLine(l.id)}><Icon name="trash" size={16} /></button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -319,7 +324,7 @@ export default function BatchDetailPage({ params }: { params: { id: string } }) 
           </tbody>
         </table>
       </div>
-      <p className="sub-hint" style={{ marginTop: -4 }}>Tick rows to bulk-{role === 'admin' ? 'approve/reject' : 'approve-for-payment / send back'}; “Edit” updates fields or reuploads the file; “View” opens the original invoice. Priority I = due by 7th, II = due by 22nd.</p>
+      <p className="sub-hint" style={{ marginTop: -4 }}>Tick rows to bulk-{role === 'admin' ? 'approve/reject' : 'approve-for-payment / send back'}. Row actions: <b>View</b> (eye) opens the original invoice, <b>Edit</b> (pencil) updates fields or reuploads, <b>Delete</b> (trash) removes the line. Cycle I = due by 7th, Cycle II = due by 22nd.</p>
 
       <div className="cards-2">
         {role === 'admin' ? (
@@ -353,7 +358,7 @@ export default function BatchDetailPage({ params }: { params: { id: string } }) 
             <div className="panel__title" style={{ marginBottom: 12 }}>Finance review &amp; approval</div>
             {financeMsg ? <div className={'reco ' + (financeMsg.startsWith('↩') ? 'review' : 'ok')}>{financeMsg}</div> : (
               <>
-                <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>{finApproved}/{lines.length} invoices approved for payment. Verify each invoice (incl. <b>Payment Priority</b>) — you can also <b>Edit</b> to correct, or send the batch back.</p>
+                <p className="muted" style={{ fontSize: 12.5, marginTop: 0 }}>{finApproved}/{lines.length} invoices approved for payment. Verify each invoice (incl. <b>Payment Cycle</b>) — you can also <b>Edit</b> to correct, or send the batch back.</p>
                 <textarea className="input" style={{ width: '100%', height: 60, padding: 10 }} placeholder="Note (for send-back to Admin)" value={financeComment} onChange={(e) => setFinanceComment(e.target.value)} />
                 <div style={{ display: 'flex', gap: 10, marginTop: 12, flexWrap: 'wrap' }}>
                   <button className="btn btn--success btn--sm" onClick={financeApproveBatch}><Icon name="check" size={15} strokeWidth={2.2} /> Approve for Payment (batch)</button>

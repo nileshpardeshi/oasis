@@ -2,7 +2,7 @@
 ### Detailed Enterprise Design & Implementation Plan
 
 **Part of:** OASIS — Opus Administration & Service Intelligence Suite (see [implementation_plan.md](implementation_plan.md) §9 Module 5)
-**Version:** 1.3 (Draft for Review — adds Finance verification/approval workflow (F20), Reports module + scheduled report delivery (F19), invoice-level entity, batch & per-invoice edit/delete + bulk approval, original-invoice view/download (F5), and payment-priority capture) · **Date:** 2026-06-04 · **Status:** Pending stakeholder review
+**Version:** 1.4 (Draft for Review — adds the **monthly Master File** model: daily bill files coded `BILL-DD-MON-YYYY-<I/II>` roll up by received month; **master-level reconciliation** of one **monthly** finance report matched across all open masters, handling **cross-month** payments. Prior 1.3: Finance verification/approval workflow (F20), Reports module + scheduled delivery (F19), invoice-level entity, batch & per-invoice edit/delete + bulk approval, original-invoice view/download (F5), payment-cycle capture) · **Date:** 2026-06-04 · **Status:** Pending stakeholder review
 **Stack (inherited):** Next.js + TypeScript (frontend) · Java 21 + Spring Boot 3 (core services) · Python + FastAPI (AI services) · PostgreSQL + Redis · Object storage · **Pluggable extraction engine — Azure AI Document Intelligence (default, tenant-bound/in-region/no-train) with a swappable on-prem option** (see §10.9)
 
 > This document is grounded in the real artifacts supplied in `Data/`: the billing MIS workbook, the finance payment-details email, the payment screenshot, and sample invoices.
@@ -118,10 +118,10 @@ flowchart TB
 
 | Persona | Responsibilities | Key permissions |
 |---|---|---|
-| **Admin – Invoice Processor** (Sandeep) | Upload invoices, review/confirm extraction, build billing batch, upload finance report, trigger notifications | Create/edit batches, run extraction & reconciliation |
+| **Admin – Invoice Processor** (Sandeep) | Receives invoices daily; builds **multiple bill files per month** (`BILL-DD-MON-YYYY-<I/II>`) that roll up into the **monthly master file** (by received month) and shares them with Finance; review/confirm extraction; upload the **monthly** finance report; trigger notifications | Create/edit bill files & masters, run extraction & reconciliation |
 | **Admin – Approver / Checker** | Cross-check billing batch & reconciliation; approve/reject/return with comments | Approve/reject, comment |
 | **Admin Head / Manager** | Oversight, dashboards, escalations | Read-all, reports, config |
-| **Finance** | Access the shared batch in OASIS; **verify each invoice** (incl. Payment Priority); **Approve for Payment** → **Approved By Finance**; **send back for correction** or **edit/correct** invoices; pay via the existing portal; send the payment report | Per-invoice & batch finance approval, send-back, edit; (optional) upload report |
+| **Finance** | Access the shared batch in OASIS; **verify each invoice** (incl. Payment Cycle); **Approve for Payment** → **Approved By Finance**; **send back for correction** or **edit/correct** invoices; pay via the existing portal; send the payment report | Per-invoice & batch finance approval, send-back, edit; (optional) upload report |
 | **Vendor** (external) | Receives payment confirmation | None (notification recipient only) |
 | **System Admin** | Categories, templates, entities, RBAC, integrations | Configuration |
 
@@ -154,7 +154,7 @@ Every requested capability mapped to a feature ID (used across this doc):
 | **F17** | Reminders/alerts for due, overdue, new-due payments | §17 |
 | **F18** | Vendor notification in two modes — **(a) manual** trigger from UI and **(b) scheduled** (daily/weekly/monthly at a set time) scanning paid bills; an **"already notified" flag** prevents duplicate emails to the same vendor | §17, §11, §13.6 |
 | **F19** | **Reports module** — a report **library** (multiple report types with charts) + **scheduled email delivery** (daily/weekly/monthly at a set time, recipients, subject, report period = last N days; enable/edit/delete; delivery history) | §13.10, §16, §11, §14 |
-| **F20** | **Finance verification & approval workflow** — Finance accesses the shared batch, verifies invoices, **Approve for Payment** (per invoice + whole batch → status **Approved By Finance**), **send back for correction**, or **edit/correct** directly; reviews the **Payment Priority** column | §5, §4, §12, §13.3 |
+| **F20** | **Finance verification & approval workflow** — Finance accesses the shared batch, verifies invoices, **Approve for Payment** (per invoice + whole batch → status **Approved By Finance**), **send back for correction**, or **edit/correct** directly; reviews the **Payment Cycle** column | §5, §4, §12, §13.3 |
 
 **Enhancements adopted from design review (E1–E7):**
 
@@ -189,7 +189,7 @@ Derived from `Data/billing sheet format/Billing MIS…xlsx` (*Base Sheet*). Thes
 | 11 | Bill Received date | `billReceivedDate` | User (F4) | Date invoice received |
 | 12 | Sent to Finance on | `sentToFinanceOn` | System | Set when batch shared |
 | 13 | Due Date | `dueDate` | Derived | From bill date + credit period & **payment cycle rule** |
-| 14 | Payment Cycle / **Payment Priority** | `paymentCycle` | Derived | **Priority I** if due ≤ 7th, **II** if ≤ 22nd (else next cycle); shown at upload, review & in the batch; configurable |
+| 14 | Payment Cycle | `paymentCycle` | Derived | **Cycle I** if due ≤ 7th, **Cycle II** if ≤ 22nd (else next cycle); shown at upload, review & in the batch; configurable |
 | 15 | Payment Recd date / Paid on | `paymentDate` | Reconciliation | From finance report |
 | 16 | Cheque/NEFT No | `utrOrChequeNo` | Reconciliation | UTR / cheque no |
 | 17 | Cheque/NEFT Date | `paymentInstrumentDate` | Reconciliation | |
@@ -216,7 +216,7 @@ Derived from `Data/billing sheet format/Billing MIS…xlsx` (*Base Sheet*). Thes
 
 ## 8. Finance Payment Report — Reconciliation Spec
 
-Grounded in `Data/Finance report for payment/` (email + screenshot). The report is **vendor-grouped**:
+Grounded in `Data/Finance report for payment/` (email + screenshot). Finance pays **once or twice a month** and issues **one monthly payment report** that is **vendor-grouped**. Crucially, a single monthly report can clear invoices that were **received in different months** (e.g. an April-received bill paid in the May run alongside May-received bills) — so reconciliation is **master-level, never scoped to one bill file/batch** (see "Master-level / cross-month" below):
 
 ```
 Date       Particulars                  Reference No        Amount   Dr/Cr   Amount(net)   UTR No
@@ -239,7 +239,7 @@ flowchart TB
   P[Parse manually-uploaded finance report - Excel / Word / email file] --> N[Normalize rows]
   N --> G[Group by vendor + UTR + date]
   G --> L[For each Agst Ref line: strip '-TDS', classify Dr vs Cr]
-  L --> M[Match Reference No → BillingLine.billNo within entity/vendor]
+  L --> M[Match Reference No → BillingLine.billNo across ALL open master files - any received month - within entity/vendor]
   M --> C{Match confidence}
   C -->|Exact| UP[Update line: paymentDate, UTR, paidAmount=ΣDr−ΣCr, tdsAmount=ΣCr, mode, status=Paid]
   C -->|Fuzzy/ambiguous/none| EXC[Exception queue → human review]
@@ -256,6 +256,7 @@ flowchart TB
 - **Partial / unmatched / extra refs** → exception queue with reason; never silently auto-pay.
 - **Idempotent:** re-uploading the same report does not double-update (dedupe by UTR + reference).
 - **Multi-entity:** report is per company (e.g., "- OSPL"); reconcile within the same `payingEntity`.
+- **Master-level / cross-month (key rule):** the unit of reconciliation is the **monthly master file** (keyed by invoice *received* month), **not** the individual bill file/batch. Each `Reference No` is matched to the open invoice **wherever it lives — across every master file** — because payment timing is decoupled from receipt timing. So one **May** report can simultaneously clear an **Apr-master** invoice (received April, paid May) and **May-master** invoices. The result surfaces the **master month per matched line** and the set of **master months the report spans**. Matching on the stable (vendor + bill no) key makes this order-independent and idempotent; partial/carried-forward invoices simply match whenever their reference next appears.
 - **Input (this phase):** the finance report is **manually uploaded** by the user (Excel / Word / email `.eml`/`.msg`); no Finance-app API or mailbox auto-ingest yet.
 - **Presentation:** matched results are shown **grouped by vendor** (combined net + single UTR), expandable to per-bill — mirroring the finance report's structure. (Vendor grouping also drives the batch view and notifications.)
 
@@ -406,8 +407,9 @@ erDiagram
 - **PayingEntity** — code (OSPL/OSSPL/US…), legalName, country, currency, isFreeText.
 - **Invoice** — vendorId, payingEntityId, billNo, billDate, receivedDate, amounts, currency, status, fileObjectId, extractionConfidence, sourceChannel(upload/email).
 - **InvoiceField** — invoiceId, fieldName, value, confidence, edited(bool). *(audit of AI vs human)*
-- **BillingBatch** — code, periodMonth, status (Draft … Approved → **Sent to Finance** → **Approved By Finance** → Reconciliation Open → Closed), createdBy, approvedBy, **financeApprovedBy**, sentToFinanceOn, exportRefs. *(No batch-level entity — **entity is per invoice**; a batch may span entities, F-review.)*
-- **BillingLine** — batchId, invoiceId, all §7 fields (incl. **payingEntity, billReceivedDate, creditPeriodDays, dueDate, paymentCycle/priority, sentToFinanceOn**), categoryId, **costCenter / department / project (E1)**, **riskScore / validationStatus (E2/E3)**, **adminApprovalStatus, financeApprovalStatus (F20)**, paymentStatus, **notificationStatus / vendorNotifiedAt (F18)**, isRecurring, paymentRecordId, **originalFile → FileObject (F5)**.
+- **BillingBatch** (a "bill file") — **code** in the format **`BILL-DD-MON-YYYY-<I/II/…>`** (e.g. `BILL-25-MAY-2026-I`; DD-MON-YYYY = the day it is prepared/shared, roman numeral = its sequence within the billing month), **billingMonth** (the invoice *received* month it rolls up to; shown as "Billing Month"), status (Draft … Approved → **Sent to Finance** → **Approved By Finance** → Reconciliation Open → Closed), createdBy, approvedBy, **financeApprovedBy**, sentToFinanceOn, exportRefs. *(No batch-level entity — **entity is per invoice**; a batch may span entities, F-review.)* Admin (Sandeep) creates **multiple bill files per month** as invoices arrive daily.
+- **MasterFile** (monthly, derived) — a per-month rollup keyed by **`billingMonth`** aggregating all bill files of that received-month; carries roll-up totals (invoice count, value, recurring split) and is the **unit Finance pays against and reconciliation matches against**. Exposed as a "Master files (monthly)" view with a consolidated download.
+- **BillingLine** — batchId, invoiceId, all §7 fields (incl. **payingEntity, billReceivedDate, creditPeriodDays, dueDate, paymentCycle (Cycle I/II), sentToFinanceOn**), categoryId, **costCenter / department / project (E1)**, **riskScore / validationStatus (E2/E3)**, **adminApprovalStatus, financeApprovalStatus (F20)**, paymentStatus, **notificationStatus / vendorNotifiedAt (F18)**, isRecurring, paymentRecordId, **originalFile → FileObject (F5)**.
 - **PaymentRecord** — financeReportId, payingEntityId, vendorId, utr, paymentDate, mode, grossAmount, tdsAmount, netAmount. *(1 UTR → many BillingLines)*
 - **FinanceReport** — fileObjectId/source(email), payingEntity, reportDate, parsedStatus.
 - **ReconException** — paymentRecordId/financeReportId, type(unmatched/mismatch/duplicate), detail, status, resolvedBy.
@@ -464,7 +466,7 @@ stateDiagram-v2
 ### 13.1 Upload & Intake (F1, F4)
 - Drag-drop / browse, **multi-file** — **max 10 files per upload, up to 15 MB each** (configurable), types: PDF/JPG/PNG/DOCX/XLSX.
 - Per-upload defaults: **Invoice received date**, **default paying company** (per-invoice & editable; + "Other" free-text), **default credit period**, **default type (Recurring / Non-recurring)**.
-- Uploaded-files **table** with columns: File, Entity, **Received date**, **Credit period (editable)**, **Due date (derived)**, **Payment Priority I/II (derived)**, **Type — Recurring/Non-recurring (per invoice)**, Status (Queued → Extracting → Ready for review).
+- Uploaded-files **table** with columns: File, Entity, **Received date**, **Credit period (editable)**, **Due date (derived)**, **Payment Cycle (Cycle I/II, derived)**, **Type — Recurring/Non-recurring (per invoice)**, Status (Queued → Extracting → Ready for review).
 
 ```
 ┌ Upload Invoices ───────────────────────────────────────────┐
@@ -479,29 +481,30 @@ stateDiagram-v2
 
 ### 13.2 Extraction Review (F2, F3, F5)
 - Split view: **left = original invoice preview** (PDF viewer) with **Download**, **right = extracted fields** form with confidence chips (green/amber/red).
-- Editable fields incl. **paying entity, bill received date, credit period, type (recurring/non-recurring)**; **derived Due date + Payment Priority (I/II)** shown live; arithmetic & duplicate warnings inline.
+- Editable fields incl. **paying entity, bill received date, credit period, type (recurring/non-recurring)**; **derived Due date + Payment Cycle (Cycle I/II)** shown live; arithmetic & duplicate warnings inline.
 - Actions: **Confirm & add to batch** → loads next file; or **Skip/Discard**.
 
 ### 13.3 Billing Batch & Approval (F5, F6, F7, F20)
-**Batch list:** search/filter (code/period, entity, status); per batch **View / Edit / Delete**; the entity column is **derived from the batch's invoices** (a batch may span entities).
+**Batch list:** two toggled views — **Bill files** (flat list of batches) and **Master files (monthly)** (bill files grouped by **master month** with roll-up totals + a **Download master file** action). Search/filter (code/billing month, status); per batch **View / Edit / Delete** as compact **icon actions**. **No entity column at batch level** — paying entity is an **invoice** attribute (a batch may span entities; entities are surfaced on the batch detail and per invoice). Batch codes follow **`BILL-DD-MON-YYYY-<I/II/…>`** and each batch shows its **Billing Month**.
 
-**Batch view (invoices grid)** — horizontally scrollable, billing-sheet-style columns: Vendor (+ recurring tag), Bill no (+ attached original file), Entity, **Received, Credit, Due, Payment Priority (I/II), Sent-to-Finance**, Total, Validation, **Admin approval**, **Finance approval**, Actions.
+**Batch view (invoices grid)** — horizontally scrollable, billing-sheet-style columns: Vendor (+ recurring tag), Bill no (+ attached original file), Entity, **Received, Credit, Due, Payment Cycle (Cycle I/II), Sent-to-Finance**, Total, Validation, **Admin approval**, **Finance approval**, Actions.
 - **Vendor grouping (accordion):** invoices are grouped per vendor (collapsible) with the **per-vendor total due** and a "Finance pays this vendor in **1 payment · 1 UTR**" cue — because Finance combines a vendor's invoices into a single payment. **Tracking stays per invoice** (approval, validation, status); grouping aids finance, reconciliation & notification.
 - Per invoice: **View** (preview original invoice + **Download**, F5), **Edit / reupload**, **Delete**; **Add invoice** (upload a missing invoice into the batch).
 - **Bulk multiselect** approve/reject — no approving one-by-one.
 - **Validation-gate** summary (§10.10) + **Smart Approval Assistant** (§10.11) for the focused invoice.
 - **Generate billing file** → **Download Excel / PDF**.
 - **Send to Finance** → emails Finance the batch details and sets status **Sent to Finance** (per-invoice Sent date stamped).
-- **Finance role (F20)** — role view (Admin / Finance; real RBAC later): Finance **verifies invoices**, **Approve for Payment** (per invoice via multiselect, or whole batch → **Approved By Finance**), **Send back for correction**, or **Edit/correct** invoices directly; reviews the **Payment Priority** column.
+- **Finance role (F20)** — role view (Admin / Finance; real RBAC later): Finance **verifies invoices**, **Approve for Payment** (per invoice via multiselect, or whole batch → **Approved By Finance**), **Send back for correction**, or **Edit/correct** invoices directly; reviews the **Payment Cycle** column.
 - Maker–checker **Approve / Reject / Needs Correction** + **comment**; status & history (audit-logged).
 
 ### 13.4 Records & Search (F8, F9)
 - Filters: **date range, vendor, payment status, bill no, UTR, category, paying entity, recurring**.
 - Views: **monthwise**, **vendorwise**, flat table; saved filters; CSV/Excel export of results.
+- **Result columns** include **Batch ID** (the bill file the invoice was billed under — linked to the bill file) and **Billing Month**, alongside entity, vendor, bill no, category, total, due, status, UTR and notification status.
 
 ### 13.5 Reconciliation (F10, F11, F12)
-- **Manually upload** the finance report (Excel / Word / email file) **against a batch**.
-- Reconciliation result: **Matched / Unmatched / Exceptions** tabs; per-line proposed updates (UTR, date, net, TDS, mode). **Matched results are grouped by vendor** — each vendor shows the **combined net + single UTR** (matching the finance report), expandable to the per-bill lines.
+- **Manually upload** the **monthly** finance payment report (Excel / Word / email file), tagged with the **payment-report month** — **matched against all open master files**, not a single bill file/batch.
+- Reconciliation result: **Matched / Unmatched / Exceptions** tabs; per-line proposed updates (UTR, date, net, TDS, mode) plus a **Billing Month** column (the received-month each matched invoice belongs to) and a **"billing months spanned"** indicator that flags cross-month reports. **Matched results are grouped by vendor** — each vendor shows the **combined net + single UTR** (matching the finance report), expandable to the per-bill lines. Approval updates each invoice **in whichever master file it belongs to**; exceptions never auto-pay.
 - **Review & Approve** the status update (maker–checker) → commits `Paid`.
 
 ### 13.6 Vendor Notification (F13, F18)
@@ -538,17 +541,19 @@ REST (Spring Boot), OpenAPI-documented, OAuth2-scoped. AI calls proxied to FastA
 | GET | `/api/v1/invoices/{id}` | Invoice + extracted fields + confidence |
 | GET | `/api/v1/invoices/{id}/file` | Stream original (preview/download) |
 | PUT | `/api/v1/invoices/{id}/fields` | Save edited/confirmed extraction |
-| POST | `/api/v1/billing-batches` | Create batch (entity, period) |
+| POST | `/api/v1/billing-batches` | Create bill file (auto-coded `BILL-DD-MON-YYYY-<seq>`; rolls up to its billing month) |
 | POST | `/api/v1/billing-batches/{id}/lines` | Add confirmed invoice line |
 | POST | `/api/v1/billing-batches/{id}/generate` | Generate billing file |
 | GET | `/api/v1/billing-batches/{id}/export?format=xlsx\|pdf` | Download (F7) |
+| GET | `/api/v1/masters?month=MMM-YYYY` | List monthly master files (bill files rolled up by received month) |
+| GET | `/api/v1/masters/{month}/export?format=xlsx\|pdf` | Download the consolidated master file for a month |
 | POST | `/api/v1/billing-batches/{id}/approve` | Approve/Reject/NeedsCorrection + comment |
 | POST | `/api/v1/billing-batches/{id}/send-to-finance` | **Email Finance** the batch details + set status **Sent to Finance** |
 | PUT / DELETE | `/api/v1/billing-batches/{id}` | Edit / delete a batch (F6) |
 | PUT / DELETE | `/api/v1/billing-batches/{id}/lines/{lineId}` | Edit / delete an invoice in a batch (F6) |
 | POST | `/api/v1/billing-batches/{id}/finance-approve` | Finance: approve for payment → **Approved By Finance** (F20) |
 | POST | `/api/v1/billing-batches/{id}/finance-send-back` | Finance: send back for correction (F20) |
-| POST | `/api/v1/reconciliation/upload` | Upload finance report against batch |
+| POST | `/api/v1/reconciliation/upload` | Upload **monthly** finance report (paymentMonth); matched across **all open masters** |
 | GET | `/api/v1/reconciliation/{id}/result` | Matched/unmatched/exceptions |
 | POST | `/api/v1/reconciliation/{id}/approve` | Approve status update |
 | POST | `/api/v1/notifications/send` | Send vendor notifications (manual) |

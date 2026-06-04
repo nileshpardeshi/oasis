@@ -1,8 +1,9 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
-import { billingLines, payingEntities, categories, inr } from '@/lib/invoicing/mockData';
+import { billingLines, payingEntities, categories, inr, batchForLine } from '@/lib/invoicing/mockData';
 import { StatusBadge, NotifBadge } from '@/components/invoicing/ui';
 import type { PaymentStatus } from '@/lib/invoicing/types';
 
@@ -69,16 +70,20 @@ export default function RecordsPage() {
         <table className="data-table">
           <thead>
             <tr>
-              <th>Entity</th><th>Vendor</th><th>Bill no</th><th>Bill date</th><th>Category</th>
+              <th>Entity</th><th>Billing Month</th><th>Vendor</th><th>Bill no</th><th>Batch ID</th><th>Bill date</th><th>Category</th>
               <th className="num">Total</th><th>Due</th><th>Status</th><th>UTR</th><th>Notified</th>
             </tr>
           </thead>
           <tbody>
-            {rows.map((l) => (
+            {rows.map((l) => {
+              const b = batchForLine(l.id);
+              return (
               <tr key={l.id}>
                 <td>{l.payingEntityCode}</td>
+                <td>{b?.periodMonth ?? '—'}</td>
                 <td>{l.vendorName}</td>
                 <td className="mono">{l.billNo}</td>
+                <td className="mono">{b ? <Link className="panel__link" href={`/invoicing/batches/${b.id}`}>{b.code}</Link> : '—'}</td>
                 <td>{l.billDate}</td>
                 <td>{l.categoryName}</td>
                 <td className="num">{inr(l.totalAmount)}</td>
@@ -87,8 +92,9 @@ export default function RecordsPage() {
                 <td className="mono">{l.utr ?? '—'}</td>
                 <td><NotifBadge status={l.notificationStatus} /></td>
               </tr>
-            ))}
-            {rows.length === 0 && <tr><td colSpan={10} style={{ textAlign: 'center', padding: 28, color: 'var(--text-soft)' }}>No records match your filters.</td></tr>}
+              );
+            })}
+            {rows.length === 0 && <tr><td colSpan={12} style={{ textAlign: 'center', padding: 28, color: 'var(--text-soft)' }}>No records match your filters.</td></tr>}
           </tbody>
         </table>
       </div>

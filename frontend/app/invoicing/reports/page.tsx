@@ -80,7 +80,7 @@ function BatchReportView() {
         <>
           <div className="totals-bar">
             <div><b>{batch.code}</b><span>Batch</span></div>
-            <div><b>{batch.periodMonth}</b><span>Period</span></div>
+            <div><b>{batch.periodMonth}</b><span>Billing Month</span></div>
             <div><b>{lines.length}</b><span>Invoices</span></div>
             <div><b>{inr(total)}</b><span>Total</span></div>
             <div><b>{Array.from(new Set(lines.map((l) => l.payingEntityCode))).join(', ') || '—'}</b><span>Entities</span></div>
@@ -90,13 +90,13 @@ function BatchReportView() {
           <h3 className="section-title">Invoicing details</h3>
           <div className="table-card" style={{ overflowX: 'auto', marginBottom: 18 }}>
             <table className="data-table" style={{ minWidth: 1040 }}>
-              <thead><tr><th>Vendor</th><th>Bill no</th><th>Entity</th><th>Bill date</th><th>Received</th><th>Due</th><th>Priority</th><th className="num">Basic</th><th className="num">GST</th><th className="num">Total</th><th>Status</th></tr></thead>
+              <thead><tr><th>Vendor</th><th>Bill no</th><th>Entity</th><th>Bill date</th><th>Received</th><th>Due</th><th>Payment Cycle</th><th className="num">Basic</th><th className="num">GST</th><th className="num">Total</th><th>Status</th></tr></thead>
               <tbody>
                 {lines.map((l) => (
                   <tr key={l.id}>
                     <td>{l.vendorName}</td><td className="mono">{l.billNo}</td><td>{l.payingEntityCode}</td>
                     <td>{l.billDate}</td><td>{l.billReceivedDate ?? l.billDate}</td><td>{l.dueDate}</td>
-                    <td><span className={`pill ${paymentPriority(l.dueDate) === 'I' ? 'st-process' : 'st-sentfin'}`}>{paymentPriority(l.dueDate)}</span></td>
+                    <td><span className={`pill ${paymentPriority(l.dueDate) === 'I' ? 'st-process' : 'st-sentfin'}`}>Cycle {paymentPriority(l.dueDate)}</span></td>
                     <td className="num">{inr(l.basicAmount)}</td><td className="num">{inr(l.gstAmount)}</td><td className="num">{inr(l.totalAmount)}</td>
                     <td><StatusBadge status={l.paymentStatus} /></td>
                   </tr>
@@ -349,8 +349,10 @@ function ScheduledDelivery({ initialReport }: { initialReport: string | null }) 
                 <td>{s.nextRun}</td>
                 <td><span className={`pill ${s.enabled ? 'st-paid' : 'st-unpaid'}`}>{s.enabled ? 'Enabled' : 'Disabled'}</span></td>
                 <td style={{ whiteSpace: 'nowrap' }}>
-                  <button className="btn btn--ghost btn--sm" onClick={() => openEdit(s)}>Edit</button>{' '}
-                  <button className="btn btn--ghost btn--sm" style={{ color: 'var(--danger)' }} onClick={() => removeSchedule(s.id)}>Delete</button>
+                  <div className="row-actions">
+                    <button className="btn btn--ghost btn--icon" title="Edit schedule" aria-label="Edit schedule" onClick={() => openEdit(s)}><Icon name="edit" size={16} /></button>
+                    <button className="btn btn--ghost btn--icon is-danger" title="Delete schedule" aria-label="Delete schedule" onClick={() => removeSchedule(s.id)}><Icon name="trash" size={16} /></button>
+                  </div>
                 </td>
               </tr>
             ))}
