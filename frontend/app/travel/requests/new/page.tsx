@@ -29,8 +29,8 @@ export default function NewRequestPage() {
       <>
         <div className="page-back"><Link className="btn btn--back btn--sm" href="/travel/requests"><Icon name="arrowLeft" size={15} strokeWidth={2.2} /> Back to Requests</Link></div>
         <div className="card" style={{ padding: 22, maxWidth: 720 }}>
-          <div className="reco ok" style={{ marginTop: 0 }}>✓ Request <b>TRV-{Math.floor(64400 + travellers.indexOf(t))}</b> created for <b>{t.name}</b> ({origin}→{dest}). Policy checked; {intl ? 'visa flag raised. ' : ''}RFQ simulated to your selected vendors and the AI market benchmark search started.</div>
-          <p className="sub-hint" style={{ marginTop: 14 }}>In the live system this would email the vendor RFQ (the §7-C.1 template), kick off the AI search, and land in the queue as <b>Sourcing</b>. For the prototype, open an existing request to see the comparison.</p>
+          <div className="reco ok" style={{ marginTop: 0 }}>✓ Request <b>TRV-{Math.floor(64400 + travellers.indexOf(t))}</b> created in OASIS for <b>{t.name}</b> ({origin}→{dest}). Policy checked{intl ? '; visa flag raised' : ''}. It is <b>not</b> sent to vendors (they have no API) — forward your RFQ by email as usual, then open the request to <b>Fetch best rates</b> and <b>Upload vendor quotes</b>; AI analyses them together.</div>
+          <p className="sub-hint" style={{ marginTop: 14 }}>It lands in the queue as <b>Sourcing</b>. OASIS can generate the RFQ email text (§7-C.1) for you to send manually. For the prototype, open a request and use <b>Fetch best rates</b> / <b>Upload vendor quote</b> to see the comparison.</p>
           <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
             <Link className="btn btn--primary btn--sm" href="/travel/requests/r1">Open a compared request →</Link>
             <button className="btn btn--ghost btn--sm" onClick={() => setSubmitted(false)}>Raise another</button>
@@ -88,12 +88,12 @@ export default function NewRequestPage() {
         <div style={{ marginTop: 16, display: 'grid', gap: 8 }}>
           {cabin === 'Business' && <div className="warn-inline"><Icon name="alert" size={15} /> Business class needs <b>department-head approval</b> (policy).</div>}
           {intl && <div className="warn-inline" style={{ background: 'var(--info-tint)', color: 'var(--info)' }}><Icon name="info" size={15} /> International trip — <b>visa & passport check</b> will run (links to the Visa module); passport validity ≥ 6 months required.</div>}
-          <div className="sub-hint"><Icon name="info" size={13} /> On submit, OASIS runs the policy check, emails the vendor RFQ (§7-C.1 template), and starts the AI market-benchmark search.</div>
+          <div className="sub-hint"><Icon name="info" size={13} /> On submit, OASIS runs the policy check and <b>creates the request</b>. Vendors have no API — forward your RFQ by email as usual; then use <b>Fetch best rates</b> + <b>Upload vendor quotes</b> on the request, and AI compares them together.</div>
         </div>
       </div>
 
       <div style={{ display: 'flex', gap: 10 }}>
-        <button className="btn btn--primary" onClick={() => setSubmitted(true)}>Create request &amp; send RFQ <Icon name="chevronRight" size={16} strokeWidth={2.2} /></button>
+        <button className="btn btn--primary" onClick={() => setSubmitted(true)}>Create request <Icon name="chevronRight" size={16} strokeWidth={2.2} /></button>
         <Link className="btn btn--back" href="/travel/requests"><Icon name="arrowLeft" size={16} strokeWidth={2.2} /> Cancel</Link>
       </div>
     </>

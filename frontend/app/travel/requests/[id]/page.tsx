@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
-import { getRequest, allOptions, median, verdict, inr, fmtDur } from '@/lib/travel/mockData';
+import { getRequest, median, verdict, inr, fmtDur } from '@/lib/travel/mockData';
 import { StatCards, StatusBadge, VerdictBadge, PolicyBadge, SourceTag } from '@/components/travel/ui';
 import type { QuoteOption } from '@/lib/travel/types';
 
@@ -13,15 +13,27 @@ type Lens = 'value' | 'price' | 'time' | 'policy';
 export default function RequestDetail() {
   const { id } = useParams<{ id: string }>();
   const r = getRequest(id);
+  const seeded = r ? r.status !== 'Sourcing' : false; // already fetched/uploaded for compared requests
   const [lens, setLens] = useState<Lens>('value');
   const [selId, setSelId] = useState<string | undefined>(r?.recommendedOptionId);
   const [decision, setDecision] = useState<'none' | 'recommended' | 'approved'>('none');
+  const [benchOn, setBenchOn] = useState(seeded);
+  const [vendorOn, setVendorOn] = useState(seeded);
+  const [fetching, setFetching] = useState(false);
+  const [uploadPanel, setUploadPanel] = useState(false);
+  const [extracting, setExtracting] = useState(false);
 
   if (!r) {
     return <div className="empty"><div className="empty__icon"><Icon name="travel" size={36} /></div><h2>Request not found</h2><p><Link className="btn btn--back btn--sm" href="/travel/requests"><Icon name="arrowLeft" size={15} strokeWidth={2.2} /> Back to Requests</Link></p></div>;
   }
 
-  const opts = allOptions(r);
+  const vendorOptions = vendorOn ? r.vendorQuotes.flatMap((vq) => vq.options) : [];
+  const benchOptions = benchOn ? r.benchmark : [];
+  const opts = [...vendorOptions, ...benchOptions];
+
+  const doFetch = () => { setFetching(true); setTimeout(() => { setBenchOn(true); setFetching(false); }, 650); };
+  const doUpload = () => { setExtracting(true); setTimeout(() => { setVendorOn(true); setExtracting(false); setUploadPanel(false); }, 750); };
+
   const back = <div className="page-back"><Link className="btn btn--back btn--sm" href="/travel/requests"><Icon name="arrowLeft" size={15} strokeWidth={2.2} /> Back to Requests</Link></div>;
 
   const header = (
@@ -40,24 +52,44 @@ export default function RequestDetail() {
     </>
   );
 
-  // No normalised options yet → awaiting state
+  // Action bar — Fetch best rates (internal APIs + AI) and Upload vendor quotes (no electronic RFQ; vendors have no API)
+  const actionBar = (
+    <div className="card" style={{ padding: 14, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+      <div style={{ flex: 1, minWidth: 220 }}>
+        <div style={{ fontWeight: 700, fontSize: 13.5 }}>Source options for this request</div>
+        <div className="muted" style={{ fontSize: 12 }}>
+          Vendors have no API — forward your RFQ by email as usual, then <b>upload their quotes</b> and <b>fetch the AI benchmark</b>; AI compares them together.
+          &nbsp;·&nbsp; Benchmark: <b>{benchOn ? 'fetched' : 'not fetched'}</b> · Uploaded quotes: <b>{vendorOptions.length}</b>
+        </div>
+      </div>
+      <button className={'btn btn--sm ' + (benchOn ? 'btn--ghost' : 'btn--primary')} disabled={fetching} onClick={doFetch}>
+        <Icon name="assistant" size={15} /> {fetching ? 'Searching the market…' : benchOn ? 'Re-fetch best rates' : 'Fetch best rates (AI)'}
+      </button>
+      <button className="btn btn--ghost btn--sm" onClick={() => setUploadPanel((s) => !s)}><Icon name="upload" size={15} /> Upload vendor quote</button>
+      <button className="btn btn--ghost btn--sm" onClick={() => alert('Mock: RFQ email text generated from the §7-C.1 template — copy & send to your vendors.')}><Icon name="invoicing" size={15} /> Generate RFQ email</button>
+    </div>
+  );
+
+  const uploadBox = uploadPanel && (
+    <div className="card" style={{ padding: 16, marginBottom: 16, borderStyle: 'dashed' }}>
+      <div className="panel__title" style={{ marginBottom: 8 }}><Icon name="upload" size={16} /> Upload vendor quote</div>
+      <p className="sub-hint" style={{ marginTop: 0 }}>Drop the vendor's <b>email (.eml/.msg)</b>, <b>PDF</b> or <b>Excel</b> (the §7-C.1 sample format). AI extracts &amp; normalises every option — segments, layovers, baggage, refundability, change/cancel rules — to one schema.</p>
+      <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
+        <button className="btn btn--primary btn--sm" disabled={extracting} onClick={doUpload}>{extracting ? 'Extracting & normalising…' : 'Simulate AI extraction'}</button>
+        <button className="btn btn--ghost btn--sm" onClick={() => setUploadPanel(false)}>Cancel</button>
+      </div>
+    </div>
+  );
+
+  // Nothing sourced yet → action-forward empty state
   if (opts.length === 0) {
     return (
       <>
-        {back}{header}
-        <div className="card" style={{ padding: 18, marginBottom: 16 }}>
-          <div className="panel__title" style={{ marginBottom: 10 }}>Sourcing — awaiting quotes &amp; benchmark</div>
-          <div className="table-card">
-            <table className="data-table">
-              <thead><tr><th>Vendor</th><th>Status</th><th>Received</th><th className="num">Turnaround</th></tr></thead>
-              <tbody>
-                {r.vendorQuotes.map((v) => (
-                  <tr key={v.id}><td>{v.vendorName}</td><td><span className={'tv-pill ' + (v.status === 'Received' ? 'tv-paid' : 'tv-warn')}>{v.status}</span></td><td>{v.receivedAt ?? '—'}</td><td className="num">{v.turnaroundHrs ? v.turnaroundHrs + 'h' : '—'}</td></tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="sub-hint" style={{ marginTop: 12 }}><Icon name="assistant" size={14} /> The AI market-benchmark search runs in parallel; quotes are auto-normalised on arrival, then the comparison opens here.</p>
+        {back}{header}{actionBar}{uploadBox}
+        <div className="empty">
+          <div className="empty__icon"><Icon name="analytics" size={34} /></div>
+          <h2>No options yet</h2>
+          <p>Use <b>Fetch best rates (AI)</b> to pull the live market benchmark, and <b>Upload vendor quote</b> to add the quotes your agents email back. OASIS then compares everything together and recommends the best on multiple factors.</p>
         </div>
       </>
     );
@@ -76,7 +108,7 @@ export default function RequestDetail() {
   const cheapestInPolicy = (inPolicyOpts.length ? inPolicyOpts : opts).reduce((a, b) => (b.fare < a.fare ? b : a));
   const fastest = opts.reduce((a, b) => (b.totalDurationMin < a.totalDurationMin ? b : a));
   const bestValue = opts.reduce((a, b) => (b.score > a.score ? b : a));
-  const benchMin = Math.min(...(r.benchmark.length ? r.benchmark.map((b) => b.fare) : [med]));
+  const benchMin = benchOptions.length ? Math.min(...benchOptions.map((b) => b.fare)) : med;
 
   const tagsFor = (o: QuoteOption) => {
     const t: string[] = [];
@@ -90,16 +122,15 @@ export default function RequestDetail() {
     if (lens === 'price') return a.fare - b.fare;
     if (lens === 'time') return a.totalDurationMin - b.totalDurationMin;
     if (lens === 'policy') return Number(b.inPolicy) - Number(a.inPolicy) || a.fare - b.fare;
-    return b.score - a.score; // value
+    return b.score - a.score;
   });
 
-  const sel = opts.find((o) => o.id === selId) ?? sorted[0];
+  const sel = opts.find((o) => o.id === selId) ?? bestValue;
   const recommended = opts.find((o) => o.id === r.recommendedOptionId);
   const negotiate = (o: QuoteOption) => {
     const delta = o.fare - benchMin;
     alert(
-      `Draft to ${o.sourceName}:\n\n` +
-      `Re: ${r.code} ${r.originCode}–${r.destCode} (${o.airline}, ${r.cabin}).\n` +
+      `Draft to ${o.sourceName}:\n\nRe: ${r.code} ${r.originCode}–${r.destCode} (${o.airline}, ${r.cabin}).\n` +
       `Your quote ₹${o.fare.toLocaleString('en-IN')}. Our market benchmark for the same itinerary is ₹${benchMin.toLocaleString('en-IN')} ` +
       `(${delta > 0 ? '−₹' + delta.toLocaleString('en-IN') : 'in line'}). Can you match or better this? Please revert by EOD.`,
     );
@@ -107,7 +138,9 @@ export default function RequestDetail() {
 
   return (
     <>
-      {back}{header}
+      {back}{header}{actionBar}{uploadBox}
+
+      {!benchOn && <div className="warn-inline" style={{ marginBottom: 14 }}><Icon name="assistant" size={15} /> Showing uploaded vendor quotes only — click <b>Fetch best rates (AI)</b> to benchmark them against the live market.</div>}
 
       {/* Verdict hero + market range */}
       <div className="cmp-hero">
@@ -119,7 +152,7 @@ export default function RequestDetail() {
           </div>
           <p className="sub-hint" style={{ marginTop: 8 }}>
             Market range <b>{inr(lo)}</b>–<b>{inr(hi)}</b>, median <b>{inr(med)}</b> across {opts.length} options.
-            {recommended && <> Recommended vendor quote <b>{inr(recommended.fare)}</b> is <b style={{ color: recommended.fare > benchMin ? 'var(--danger)' : 'var(--success)' }}>{recommended.fare > benchMin ? `+₹${(recommended.fare - benchMin).toLocaleString('en-IN')}` : 'at/under'}</b> vs the AI benchmark ({inr(benchMin)}).</>}
+            {benchOn && recommended && <> Recommended vendor quote <b>{inr(recommended.fare)}</b> is <b style={{ color: recommended.fare > benchMin ? 'var(--danger)' : 'var(--success)' }}>{recommended.fare > benchMin ? `+₹${(recommended.fare - benchMin).toLocaleString('en-IN')}` : 'at/under'}</b> vs the AI benchmark ({inr(benchMin)}).</>}
           </p>
           <div className="market-bar">
             <div className="market-tick median" style={{ left: `${pct(med)}%` }}><span>median {inr(med)}</span></div>
@@ -166,7 +199,7 @@ export default function RequestDetail() {
           <tbody>
             {sorted.map((o) => {
               const isRec = o.id === r.recommendedOptionId;
-              const cls = o.id === r.recommendedOptionId ? 'cmp-row--rec' : o.source === 'benchmark' ? 'cmp-row--bench' : '';
+              const cls = isRec ? 'cmp-row--rec' : o.source === 'benchmark' ? 'cmp-row--bench' : '';
               const diff = med ? Math.round(((o.fare - med) / med) * 100) : 0;
               return (
                 <tr key={o.id} className={'row-link ' + cls} onClick={() => setSelId(o.id)}>
@@ -217,11 +250,11 @@ export default function RequestDetail() {
           )}
         </div>
         <div className="assist">
-          <h4><Icon name="info" size={16} /> How the benchmark works</h4>
+          <h4><Icon name="info" size={16} /> How OASIS analyses these</h4>
           <p className="muted" style={{ fontSize: 12.5, margin: 0 }}>
-            Vendor quotes are auto-normalised to one schema (segments, layovers, baggage, refundability, landed cost) and shown beside the
-            <b> AI market benchmark</b> (TBO/Tripjack + Duffel + Amadeus). We report a <b>range + median</b> with a verdict — no single source is the
-            absolute cheapest, so use it to <b>negotiate or pick the best vendor</b>. Phase 1 doesn't book — the chosen vendor fulfils &amp; supports.
+            Vendors have no API, so you <b>upload</b> their email/PDF quotes and click <b>Fetch best rates</b> for the AI benchmark (TBO/Tripjack + Duffel + Amadeus, §8).
+            OASIS normalises everything to one schema and scores it on <b>price, schedule, layovers, refundability, policy fit &amp; vendor service</b>, reporting a <b>range + verdict</b> —
+            so you can <b>negotiate or pick the best vendor</b>. Phase 1 doesn't book; the chosen vendor fulfils &amp; supports.
           </p>
         </div>
       </div>

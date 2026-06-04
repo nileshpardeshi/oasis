@@ -3,7 +3,7 @@
 ### Detailed Module Requirement & Design (for review)
 
 **Parent BRD:** [implementation_plan.md](implementation_plan.md) · §9 Module 4, §8 AI/Agentic Architecture, §11 Integrations, §17 Tech Stack, §18 Phase 4
-**Version:** 0.5 (Draft for Review — adds a **GDS vs NDC** explainer, the **multi-source benchmarking method** + **Phase-1 starter API stack** (TBO/Tripjack + Duffel + Amadeus), and "free-search ≠ free-tier" guidance (§8, §8.1, D-T1); prior: 0.4 Phase-1 = Rate Benchmarking + cost/support model, 0.3 Trip Planner + grounded templates) · **Date:** 2026-06-04 · **Status:** Pending stakeholder review · **Classification:** Internal — Confidential
+**Version:** 0.6 (Draft for Review — **flow correction:** vendors have **no API** → request is **created in OASIS** (no electronic RFQ), desk forwards manually, then **Upload quotes** + **Fetch best rates**, AI analyses both together (§1.1, §6, §7-C, D-T5); prior: 0.5 GDS/NDC + benchmarking method, 0.4 Rate-Benchmarking reframe, 0.3 Trip Planner + grounded templates) · **Date:** 2026-06-04 · **Status:** Pending stakeholder review · **Classification:** Internal — Confidential
 **Author:** Solution & Design Architect (AI / RAG / Cloud)
 
 > **Scope of this document:** the *what* and *how* of the Travel Desk module — workflows, AI agents, data, screens, integrations, compliance, KPIs, and open decisions. It does **not** build anything yet; it is the design we lock before implementation (Phase 4 in the BRD).
@@ -30,6 +30,7 @@ Replace the manual, multi-hour cycle of **email RFQs → wait for agent quotes �
 - OASIS **benchmarks, normalises, recommends, and (post-booking) monitors**. **Phase 1 does not book** — ticketing stays with the **chosen vendor/TMC**, so their support is unchanged; OASIS simply **records** the booking the vendor makes. **In-portal booking** (vendor-API hand-off or direct licensed-API order, always HITL) is a **future phase** (§8.1, §21, D-T2).
 - OASIS is **not** a payment system (Finance/ERP remains system of record; see Module 5 for reconciliation) and is **not** an airline/GDS.
 - **No scraping** of consumer booking sites (ToS / anti-bot / legal / reliability). Market search is via **licensed APIs** — see §8.
+- **No electronic RFQ to vendors.** Current vendors have **no API**, so OASIS does **not** send them requests. The request is **created in OASIS**; the desk **forwards it manually/by email as today**; OASIS then lets the desk (a) **Fetch best rates** via internal benchmark APIs + AI, and (b) **upload the vendors' email/PDF/Excel quotes** — and the AI **analyses both together** to recommend the best option on multiple factors.
 
 ---
 
@@ -105,19 +106,19 @@ Access via **RBAC + ABAC** (office/region, cost-centre, grade) — e.g., a trave
 
 ```mermaid
 flowchart TB
-  REQ[Travel request - helpdesk/Opus Sync/chatbot] --> POL[Policy & visa check - Compliance Agent]
-  POL --> PAR{Parallel sourcing}
-  PAR --> AISRCH[AI market search - Flight/Hotel Search Agents - licensed APIs]
-  PAR --> RFQ[RFQ to selected vendors - portal/email]
-  RFQ --> QIN[Vendor quotes ingested - email/upload/portal]
-  QIN --> NORM[Quote Ingestion+Normalisation Agent]
-  AISRCH --> CMP[Comparison & Recommendation Agent]
+  REQ[Request created in OASIS - from helpdesk/Opus Sync] --> POL[Policy & visa check - Compliance Agent]
+  POL --> DESK{Travel desk}
+  DESK -->|Fetch best rates| AISRCH[Internal benchmark APIs + AI - Flight/Hotel Search Agents]
+  DESK -->|Forwards manually by email - outside OASIS| VEND[Vendors reply by email - sample format]
+  VEND --> UP[Desk uploads quotes - email/PDF/Excel]
+  UP --> NORM[AI ingest + normalise]
+  AISRCH --> CMP[AI compares ALL together - multi-factor]
   NORM --> CMP
-  CMP --> SHEET[Ranked comparison sheet + best option + savings vs benchmark]
+  CMP --> SHEET[Ranked recommendation + verdict + savings vs benchmark]
   SHEET --> APPR{Approval - policy thresholds}
-  APPR -->|Approved| BOOK[Assisted booking - HITL: vendor hand-off OR licensed API order]
+  APPR -->|Approved| HAND[Vendor books as today - OASIS records PNR]
   APPR -->|Rejected/Need info| REQ
-  BOOK --> TRIP[Trip record: PNR, e-ticket, hotel voucher, transit, documents, payment schedule]
+  HAND --> TRIP[Trip record: PNR, documents, payment schedule]
   TRIP --> MON[Monitoring: Schedule/PNR + Fare-drop]
   MON --> ALERT[Alerts + rebooking economics to desk/traveller]
   TRIP --> TRAVEL[Travel happens] --> CLOSE[Reconcile + expense hand-off + close]
@@ -138,10 +139,12 @@ flowchart TB
 - **T6** **Visa & document check** (→ Module 6): is a visa needed for this nationality→destination? passport validity ≥ 6 months? link/raise a visa case.
 
 ### C. Vendor Quotation Management (Challenge 1)
-- **T7** Create an **RFQ** from a request and send to **selected vendors** (vendor portal link + email); track who responded and **quote SLA/turnaround**.
-- **T8** **Ingest quotes** in any format — vendor portal entry, **email parse**, or **PDF/Excel upload**.
-- **T9** **AI normalisation** to a common schema: itinerary (segments, layovers, total duration), **landed cost** (base + taxes + fees + baggage + **agent markup/service fee**), refundability, baggage allowance, cancellation/change rules.
-- **T10** Side-by-side **comparison grid** of all vendor quotes + the AI benchmark.
+> **Vendors have no API.** The request is **created in OASIS** and **not** sent to vendors electronically — the desk forwards it **manually/by email as today**. OASIS provides two desk-triggered actions on the request: **Fetch best rates** (internal benchmark) and **Upload vendor quotes**; the AI then analyses **both together**.
+- **T7** Request **created in OASIS**; OASIS optionally **generates the RFQ email text** (the §7-C.1 template) for the desk to copy & send manually, and tracks the expected vendors + **quote due-by/SLA**. *(No electronic send to vendors.)*
+- **T8** **Upload the returned quotes** against the request — vendor **email (`.eml`/`.msg`), PDF or Excel** (per the §7-C.1 sample); multiple vendors, multiple options each.
+- **T8.1** **Fetch best rates** — a desk-triggered action runs the **internal benchmark APIs + AI** (TBO/Tripjack + Duffel + Amadeus, §8) to produce OASIS's own market options for the same itinerary.
+- **T9** **AI normalisation** of every uploaded quote to a common schema: itinerary (segments, layovers, total duration), **landed cost** (base + taxes + fees + baggage + **agent markup/service fee**), refundability, baggage allowance, cancellation/change rules.
+- **T10** **AI analyses uploaded quotes + the fetched benchmark *together*** in one side-by-side **comparison grid** and recommends the best option on **multiple factors** (§10) — with the good/average/high verdict vs the market.
 
 ### C.1 Grounded templates (from a real sample in `Data/Travel Desk/`)
 
@@ -505,7 +508,7 @@ erDiagram
 | **D-T2** | Booking mode | **Deferred — Phase 1 has no in-portal booking**; later (A) vendor hand-off / (B) direct API order | Keep booking **and support** with vendors/TMC now; revisit once benchmarking proves savings |
 | **D-T3** | Flight-status source | GDS PNR sync / Cirium / AeroDataBox / OAG | Choose on coverage + cost |
 | **D-T4** | Fare-watch default window & cadence | e.g., until 2 days pre-departure, 2×/day | **2 days, 2×/day**, configurable |
-| **D-T5** | Keep vendor RFQ flow, or go API-only over time? | Hybrid / API-first | **Hybrid** — vendors + benchmark; let data show where API-only wins |
+| **D-T5** | Vendor quote intake | Vendors have **no API** → manual forward + **upload** quotes; OASIS adds **Fetch best rates** benchmark | ✅ **Upload + Fetch** (decided) — AI analyses both together; revisit vendor APIs only if/when a vendor exposes one |
 | **D-T6** | OBT self-booking scope | None / domestic-in-policy only / broad | **Domestic in-policy only** initially |
 | **D-T7** | Build vs TMC partnership | Build on OASIS / integrate a TMC | Build the workspace; integrate TMC/vendors as content+fulfilment |
 | **D-T8** | Trip-pack enrichment providers | Weather / Maps / FX / Holidays vendors | Start low-cost self-serve (e.g., OpenWeather + Google Maps + an FX & holidays API) |

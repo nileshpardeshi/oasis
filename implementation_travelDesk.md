@@ -32,6 +32,7 @@ Tracks the **phase-wise frontend build** of Module 4 (AI Travel Desk Agent), per
 
 ## Progress log
 - _2026-06-04_ — Tracker created; FE-0 foundation + FE-1…FE-8 built (UI, mock data grounded in the HYD→SFO sample). Sub-nav: Overview · Requests · Comparison · Trips · Monitoring · Vendors · Reports · Configuration. Open **Travel Desk** in the sidebar.
+- _2026-06-04_ — **Flow correction (vendors have no API):** the request is **created in OASIS** (no electronic RFQ) — intake CTA → "Create request"; the request detail gains **Fetch best rates (AI)** + **Upload vendor quote** actions (gated + simulated) and an action-forward "No options yet" empty state, after which AI analyses **uploaded quotes + benchmark together**. Mock seeded a Sourcing request (TRV-64418, PNQ→BLR) to demo the empty→fetch→upload path. Synced travelDesk_requirement.md → v0.6 (§1.1, §6, §7-C, D-T5). Type-check clean; verified on Compared (TRV-64393) + Sourcing (TRV-64418).
 - _Next:_ AI Trip Pack screen (FE-9); then backend phase — content APIs + AI services.
 
 ## How to run

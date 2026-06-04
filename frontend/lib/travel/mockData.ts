@@ -125,6 +125,20 @@ const t64390Bench: QuoteOption = {
   ...t64390Sky, id: 'q2-bench-6e', source: 'benchmark', sourceName: 'OASIS · TBO', fare: 6120, score: 93, changeRule: '—', cancelRule: '—',
 };
 
+// TRV-64418 PNQ→BLR (round trip) — used to demo the "create → fetch best rates → upload quote" flow on a Sourcing request
+const t64418Sky: QuoteOption = {
+  id: 'q3-sky-6e', source: 'vendor', sourceName: 'Sky Travel Fares', airline: 'IndiGo', cabin: 'Economy',
+  segments: [
+    seg('6E — IndiGo', '6E 512', '2026-06-24', 'Pune', 'PNQ', 'Bengaluru', 'BLR', '06:40', '08:05', 85, '15kg'),
+    seg('6E — IndiGo', '6E 533', '2026-06-26', 'Bengaluru', 'BLR', 'Pune', 'PNQ', '19:10', '20:40', 90, '15kg'),
+  ],
+  stops: 0, layovers: [], totalDurationMin: 175, fare: 10400, refundable: false, baggage: '15kg',
+  changeRule: 'INR 3,000 + diff', cancelRule: 'INR 3,500', score: 86, inPolicy: true,
+};
+const t64418Bench: QuoteOption = {
+  ...t64418Sky, id: 'q3-bench', source: 'benchmark', sourceName: 'OASIS · TBO', airline: 'Vistara', fare: 9800, score: 91, changeRule: '—', cancelRule: '—',
+};
+
 export const travelRequests: TravelRequest[] = [
   {
     id: 'r1', code: 'TRV-64393', traveller: travellers[0], tripType: 'Round-trip',
@@ -157,8 +171,8 @@ export const travelRequests: TravelRequest[] = [
     originCity: 'Pune', originCode: 'PNQ', destCity: 'Bengaluru', destCode: 'BLR', international: false,
     departDate: '2026-06-24', returnDate: '2026-06-26', cabin: 'Economy', purpose: 'Hyperscale workshop',
     entity: 'OSSPL', billToClient: false, budget: 14000, status: 'Sourcing', raisedOn: '2026-06-03', dueBy: '2026-06-09',
-    needHotel: true, needTransit: false, benchmark: [], vendorQuotes: [
-      { id: 'vq5', vendorId: 'v1', vendorName: 'Sky Travel Fares', status: 'Awaiting', options: [] },
+    needHotel: true, needTransit: false, benchmark: [t64418Bench], vendorQuotes: [
+      { id: 'vq5', vendorId: 'v1', vendorName: 'Sky Travel Fares', status: 'Awaiting', options: [t64418Sky] },
       { id: 'vq6', vendorId: 'v2', vendorName: 'Globe Voyages', status: 'Awaiting', options: [] },
     ],
   },
