@@ -158,3 +158,21 @@ export interface TravelAlert {
   raisedAt: string;
   severity: 'info' | 'warning' | 'success';
 }
+
+// ---- AI Trip Pack (FE-9 / §7-L) ----
+export type PackItemKind = 'flight' | 'transfer' | 'hotel' | 'meeting' | 'note';
+export interface PackItem { time?: string; title: string; sub?: string; kind: PackItemKind; warn?: string }
+export interface TripDay { date: string; label: string; items: PackItem[] }
+export interface KV { label: string; value: string }
+export interface TripPack {
+  tripId: string;
+  hotel?: { name: string; address: string; checkIn: string; checkOut: string };
+  days: TripDay[];
+  weather: { day: string; hi: number; lo: number; cond: string }[];
+  transport: { leg: string; mode: string; eta: string; cost: string }[];
+  emergency: KV[];
+  basics: KV[];
+  documents: { name: string; status: string }[];
+  conflicts: string[];
+}
+

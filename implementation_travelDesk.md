@@ -28,12 +28,13 @@ Tracks the **phase-wise frontend build** of Module 4 (AI Travel Desk Agent), per
 | **FE-6** | Monitoring board — fare-watch + schedule/PNR alerts *(Phase 4b)* | ✅ Done (basic, mock) |
 | **FE-7** | Reports — library + scheduled delivery | ✅ Done (basic) |
 | **FE-8** | Configuration — travel policy, fare-watch, providers, channels | ✅ Done (basic) |
-| **FE-9** | AI Trip Pack (day-by-day pack) *(Phase 4b)* | ⬜ Pending |
+| **FE-9** | **AI Trip Pack** — day-by-day itinerary + travel pack (trip detail `/trips/[id]`) | ✅ Done |
 
 ## Progress log
 - _2026-06-04_ — Tracker created; FE-0 foundation + FE-1…FE-8 built (UI, mock data grounded in the HYD→SFO sample). Sub-nav: Overview · Requests · Comparison · Trips · Monitoring · Vendors · Reports · Configuration. Open **Travel Desk** in the sidebar.
 - _2026-06-04_ — **Flow correction (vendors have no API):** the request is **created in OASIS** (no electronic RFQ) — intake CTA → "Create request"; the request detail gains **Fetch best rates (AI)** + **Upload vendor quote** actions (gated + simulated) and an action-forward "No options yet" empty state, after which AI analyses **uploaded quotes + benchmark together**. Mock seeded a Sourcing request (TRV-64418, PNQ→BLR) to demo the empty→fetch→upload path. Synced travelDesk_requirement.md → v0.6 (§1.1, §6, §7-C, D-T5). Type-check clean; verified on Compared (TRV-64393) + Sourcing (TRV-64418).
-- _Next:_ AI Trip Pack screen (FE-9); then backend phase — content APIs + AI services.
+- _2026-06-04_ — **FE-9 AI Trip Pack built:** trip detail `/travel/trips/[id]` — TZ-aware **day-by-day itinerary** (flights/transfer/hotel/meeting with conflict flag), plus **weather, local transport, safety & emergency, destination basics, documents**, and Download PDF / Add-to-calendar / Send actions. Flagship pack seeded for TRP-64393 (HYD→SFO, Mon 10:00 client meeting); other trips show a "pack assembles after ticketing" state. Trips list now links to the pack. Type-check clean; verified.
+- _Next:_ remaining Phase-4b polish (hotel + ground-transit in the comparison workspace; scheduled-reports config) is optional; otherwise the **frontend is feature-complete** for this module → backend phase (content APIs + AI services).
 
 ## How to run
 Dev server runs the whole OASIS app; open **Travel Desk** from the sidebar (`/travel`). Type-check with `npx tsc --noEmit` in `frontend/`.

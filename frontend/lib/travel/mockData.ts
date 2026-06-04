@@ -2,7 +2,7 @@
 // Flagship request TRV-64393 is grounded in the real HYD→SFO vendor sample in Data/Travel Desk/ (PII-free).
 
 import type {
-  Traveller, Vendor, TravelRequest, QuoteOption, FlightSegment, Trip, TravelAlert,
+  Traveller, Vendor, TravelRequest, QuoteOption, FlightSegment, Trip, TravelAlert, TripPack,
 } from './types';
 
 // ---------- helpers ----------
@@ -204,11 +204,76 @@ export const allOptions = (r: TravelRequest): QuoteOption[] => [
 
 // ---------- trips (booked) ----------
 export const trips: Trip[] = [
+  { id: 'tr-sfo', code: 'TRP-64393', requestCode: 'TRV-64393', traveller: 'Suraj S.', routeLabel: 'HYD → SFO → HYD', airline: 'Air India', pnr: 'AIZ7Q4', departDate: '2026-06-13', returnDate: '2026-06-20', fare: 128912, vendorName: 'Sky Travel Fares', entity: 'OSPL', status: 'Ticketed', paymentStatus: 'Paid', fareWatch: true },
   { id: 'tr1', code: 'TRP-64377', requestCode: 'TRV-64377', traveller: 'Vikram N.', routeLabel: 'DEL → SIN → DEL', airline: 'Singapore Airlines', pnr: 'QF7ZK2', departDate: '2026-06-15', returnDate: '2026-06-19', fare: 68900, vendorName: 'Sky Travel Fares', entity: 'OSPL', status: 'Ticketed', paymentStatus: 'Paid', fareWatch: true },
   { id: 'tr2', code: 'TRP-64355', requestCode: 'TRV-64355', traveller: 'Ananya R.', routeLabel: 'PNQ → DEL → PNQ', airline: 'Vistara', pnr: 'VS1QP8', departDate: '2026-06-09', returnDate: '2026-06-11', fare: 14250, vendorName: 'Globe Voyages', entity: 'OSSPL', status: 'Travelling', paymentStatus: 'Paid', fareWatch: false },
   { id: 'tr3', code: 'TRP-64361', requestCode: 'TRV-64361', traveller: 'Suraj S.', routeLabel: 'HYD → DXB → HYD', airline: 'Emirates', pnr: 'EK9MText', departDate: '2026-06-26', returnDate: '2026-07-01', fare: 96400, vendorName: 'Sky Travel Fares', entity: 'OSPL', status: 'Booked', paymentStatus: 'Advance Due', fareWatch: true },
   { id: 'tr4', code: 'TRP-64310', requestCode: 'TRV-64310', traveller: 'Vikram N.', routeLabel: 'BLR → HYD → BLR', airline: 'IndiGo', pnr: '6ERT44', departDate: '2026-05-22', returnDate: '2026-05-23', fare: 7180, vendorName: 'TripBridge Travels', entity: 'OSPL', status: 'Completed', paymentStatus: 'Paid', fareWatch: false },
 ];
+
+export const getTrip = (id: string) => trips.find((t) => t.id === id || t.code === id);
+
+// ---------- flagship AI Trip Pack (HYD→SFO, client meeting Mon 10:00) — §7-L ----------
+export const tripPacks: Record<string, TripPack> = {
+  'tr-sfo': {
+    tripId: 'tr-sfo',
+    hotel: { name: 'Hyatt Regency San Francisco', address: '5 Embarcadero Center, SF, CA', checkIn: '2026-06-13 19:00', checkOut: '2026-06-20 12:00' },
+    days: [
+      { date: '2026-06-13', label: 'Sat · Outbound', items: [
+        { time: '05:30', title: 'AI 1806 · HYD → DEL', sub: 'arr 07:55 · 1PC', kind: 'flight' },
+        { time: '10:50', title: 'AI 183 · DEL → SFO', sub: 'arr 17:45 local · 1PC', kind: 'flight' },
+        { time: '18:15', title: 'Airport → hotel transfer', sub: 'Prepaid cab · ~32 min · $55', kind: 'transfer' },
+        { time: '19:00', title: 'Hotel check-in', sub: 'Hyatt Regency, Embarcadero', kind: 'hotel' },
+      ] },
+      { date: '2026-06-15', label: 'Mon · Client meeting', items: [
+        { time: '09:05', title: 'Leave hotel for client office', sub: 'Cab · ~32 min · leave by 09:05', kind: 'transfer' },
+        { time: '10:00', title: 'Client meeting — Partnerships', sub: '350 Mission St, SF · contact: client PMO', kind: 'meeting' },
+        { time: '13:00', title: 'Buffer / lunch', sub: 'Near client office', kind: 'note' },
+      ] },
+      { date: '2026-06-20', label: 'Sat · Return', items: [
+        { time: '17:00', title: 'Hotel checkout', sub: 'Bell desk can hold bags', kind: 'hotel' },
+        { time: '18:00', title: 'Hotel → SFO transfer', sub: 'Cab · ~35 min · $58', kind: 'transfer' },
+        { time: '20:45', title: 'AI 184 · SFO → DEL', sub: 'arr 05:45 +1 · 1PC', kind: 'flight', warn: 'Return DEL layover 1h 20m — tight; monitor for delays' },
+        { time: '09:40', title: 'AI 2542 · DEL → HYD (22-Jun)', sub: 'arr 12:00 · 1PC', kind: 'flight' },
+      ] },
+    ],
+    weather: [
+      { day: 'Sat 13', hi: 19, lo: 12, cond: 'Partly cloudy' },
+      { day: 'Sun 14', hi: 20, lo: 12, cond: 'Sunny' },
+      { day: 'Mon 15', hi: 18, lo: 11, cond: 'Low cloud AM' },
+      { day: 'Tue 16', hi: 21, lo: 13, cond: 'Sunny' },
+    ],
+    transport: [
+      { leg: 'SFO → Hotel', mode: 'Prepaid cab', eta: '32 min', cost: '$55' },
+      { leg: 'Hotel → Client (Mission St)', mode: 'Cab / Uber', eta: '12 min', cost: '$18' },
+      { leg: 'Hotel → SFO', mode: 'Prepaid cab', eta: '35 min', cost: '$58' },
+      { leg: 'Around the city', mode: 'BART / Muni', eta: '—', cost: '$3–4 / ride' },
+    ],
+    emergency: [
+      { label: 'Police / Ambulance / Fire', value: '911' },
+      { label: 'Nearest hospital', value: 'UCSF Medical Center (1.6 km)' },
+      { label: 'Consulate General of India, SF', value: '+1 415-483-3800' },
+      { label: 'OASIS 24×7 travel desk', value: '+91 20 4857 5100' },
+      { label: 'Traveller emergency contact', value: 'On file (HR)' },
+    ],
+    basics: [
+      { label: 'Time zone', value: 'PDT (UTC−7) · 12.5h behind IST' },
+      { label: 'Currency / FX', value: '1 USD ≈ ₹84' },
+      { label: 'Language', value: 'English' },
+      { label: 'Power', value: 'Type A/B · 120V' },
+      { label: 'Public holidays', value: 'None during trip' },
+    ],
+    documents: [
+      { name: 'US visa (B1/B2)', status: 'Valid' },
+      { name: 'Passport', status: 'Valid to 2029' },
+      { name: 'E-ticket (AI · PNR AIZ7Q4)', status: 'Issued' },
+      { name: 'Hotel voucher', status: 'Confirmed' },
+      { name: 'Travel insurance', status: 'Active' },
+    ],
+    conflicts: ['Return DEL layover is 1h 20m — tighter than the 2h guideline; Monitoring will watch it.'],
+  },
+};
+export const getTripPack = (id: string): TripPack | undefined => { const t = getTrip(id); return t ? tripPacks[t.id] : undefined; };
 
 // ---------- alerts (monitoring) ----------
 export const alerts: TravelAlert[] = [

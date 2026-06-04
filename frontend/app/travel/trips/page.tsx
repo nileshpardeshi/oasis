@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
 import { trips, inr } from '@/lib/travel/mockData';
 import { StatCards, Money } from '@/components/travel/ui';
@@ -42,7 +43,7 @@ export default function TripsPage() {
 
       <div className="table-card" style={{ overflowX: 'auto' }}>
         <table className="data-table" style={{ minWidth: 980 }}>
-          <thead><tr><th>Trip</th><th>Traveller</th><th>Route</th><th>Airline</th><th>PNR</th><th>Depart</th><th className="num">Fare</th><th>Vendor</th><th>Status</th><th>Payment</th><th>Fare-watch</th></tr></thead>
+          <thead><tr><th>Trip</th><th>Traveller</th><th>Route</th><th>Airline</th><th>PNR</th><th>Depart</th><th className="num">Fare</th><th>Vendor</th><th>Status</th><th>Payment</th><th>Fare-watch</th><th>Pack</th></tr></thead>
           <tbody>
             {rows.map((t) => (
               <tr key={t.id}>
@@ -57,9 +58,10 @@ export default function TripsPage() {
                 <td><span className={'tv-pill ' + ST_CLASS[t.status]}>{t.status}</span></td>
                 <td><span className={'tv-pill ' + (PAY_CLASS[t.paymentStatus] ?? 'tv-unpaid')}>{t.paymentStatus}</span></td>
                 <td>{t.fareWatch ? <span className="tv-pill tv-paid"><Icon name="bell" size={12} /> On</span> : <span className="tv-pill tv-unpaid">Off</span>}</td>
+                <td><div className="row-actions"><Link className="btn btn--ghost btn--icon" href={`/travel/trips/${t.id}`} title="AI Trip Pack" aria-label="AI Trip Pack"><Icon name="eye" size={16} /></Link></div></td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan={11} style={{ textAlign: 'center', padding: 26, color: 'var(--text-soft)' }}>No trips match your filters.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={12} style={{ textAlign: 'center', padding: 26, color: 'var(--text-soft)' }}>No trips match your filters.</td></tr>}
           </tbody>
         </table>
       </div>

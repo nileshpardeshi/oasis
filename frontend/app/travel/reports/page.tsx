@@ -1,3 +1,5 @@
+'use client';
+
 import { Icon, type IconName } from '@/components/ui/Icon';
 
 const REPORTS: { name: string; desc: string; icon: IconName; tint: string }[] = [
