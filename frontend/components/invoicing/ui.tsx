@@ -2,6 +2,7 @@
 import * as React from 'react';
 import type { PaymentStatus, RiskLevel, ValidationStatus, NotificationStatus, Confidence, BatchStatus } from '@/lib/invoicing/types';
 import { inr } from '@/lib/invoicing/mockData';
+import { Icon, type IconName } from '@/components/ui/Icon';
 
 const BATCH_CLASS: Record<BatchStatus, string> = {
   'Draft': 'st-unpaid',
@@ -64,4 +65,30 @@ export function ConfidenceDot({ level }: { level: Confidence }) {
 
 export function Money({ value }: { value?: number }) {
   return <span className="num">{value == null ? '—' : inr(value)}</span>;
+}
+
+// A polished summary strip of stat cards (icon chip + value + label) — used for screen summaries.
+export interface Stat {
+  icon: IconName;
+  tint?: string;          // tint-blue | tint-info | tint-orange | tint-green | tint-red
+  value: React.ReactNode;
+  label: string;
+  small?: boolean;        // smaller value (money / text values)
+  accent?: boolean;       // highlight the card (e.g. the headline Total)
+}
+
+export function StatCards({ stats }: { stats: Stat[] }) {
+  return (
+    <div className="stat-strip">
+      {stats.map((s, i) => (
+        <div className={'stat-card' + (s.accent ? ' stat-card--accent' : '')} key={i}>
+          <div className={'stat-card__icon ' + (s.tint ?? 'tint-blue')}><Icon name={s.icon} size={18} /></div>
+          <div style={{ minWidth: 0 }}>
+            <div className={'stat-card__value' + (s.small ? ' is-sm' : '')} title={typeof s.value === 'string' ? s.value : undefined}>{s.value}</div>
+            <div className="stat-card__label">{s.label}</div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }

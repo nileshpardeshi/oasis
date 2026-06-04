@@ -4,7 +4,7 @@ import { Fragment, useState } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
 import { getBatch, linesForBatch, inr, categories, payingEntities, paymentPriority, daysBetween, addDays } from '@/lib/invoicing/mockData';
-import { BatchStatusBadge, ValidationBadge, RiskBadge } from '@/components/invoicing/ui';
+import { BatchStatusBadge, ValidationBadge, RiskBadge, StatCards } from '@/components/invoicing/ui';
 import type { BillingLine, BatchStatus } from '@/lib/invoicing/types';
 
 type AdminState = 'Pending' | 'Approved' | 'Rejected';
@@ -137,7 +137,6 @@ export default function BatchDetailPage({ params }: { params: { id: string } }) 
   const fails = lines.filter((l) => l.validationStatus === 'Fail').length;
   const warns = lines.filter((l) => l.validationStatus === 'Warning').length;
   const canApprove = fails === 0 || override;
-  const entities = Array.from(new Set(lines.map((l) => l.payingEntityCode)));
   const adminApproved = lines.filter((l) => (adminStatus[l.id] ?? 'Pending') === 'Approved').length;
   const finApproved = lines.filter((l) => (financeStatus[l.id] ?? 'Pending') === 'Approved for Payment').length;
 
@@ -221,14 +220,13 @@ export default function BatchDetailPage({ params }: { params: { id: string } }) 
       {showAdd && <LineForm initial={null} onSubmit={handleAdd} onClose={() => setShowAdd(false)} />}
       {editingLine && <LineForm key={editingLine.id} initial={editingLine} onSubmit={(d) => updateLine(editingLine.id, d)} onClose={() => setEditingLineId(null)} />}
 
-      <div className="totals-bar">
-        <div><b>{lines.length}</b><span>Invoices</span></div>
-        <div><b>{inr(basic)}</b><span>Basic</span></div>
-        <div><b>{inr(gst)}</b><span>GST</span></div>
-        <div><b>{inr(total)}</b><span>Total</span></div>
-        <div><b>{entities.join(', ') || '—'}</b><span>Entities (per invoice)</span></div>
-        <div><b>{batch.periodMonth}</b><span>Billing Month</span></div>
-      </div>
+      <StatCards stats={[
+        { icon: 'invoicing', tint: 'tint-blue', value: lines.length, label: 'Invoices' },
+        { icon: 'analytics', tint: 'tint-info', value: inr(basic), label: 'Basic', small: true },
+        { icon: 'analytics', tint: 'tint-info', value: inr(gst), label: 'GST', small: true },
+        { icon: 'analytics', tint: 'tint-green', value: inr(total), label: 'Total', accent: true },
+        { icon: 'events', tint: 'tint-blue', value: batch.periodMonth, label: 'Billing Month', small: true },
+      ]} />
 
       <div className="notice" style={{ background: fails ? 'var(--danger-tint)' : warns ? '#fef3cd' : 'var(--success-tint)', borderColor: 'transparent', color: 'var(--text)' }}>
         <Icon name={fails ? 'alert' : 'check'} size={18} />

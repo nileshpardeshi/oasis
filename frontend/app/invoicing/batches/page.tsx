@@ -2,12 +2,27 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Icon } from '@/components/ui/Icon';
+import { Icon, type IconName } from '@/components/ui/Icon';
 import { billingBatches } from '@/lib/invoicing/mockData';
-import { BatchStatusBadge, Money } from '@/components/invoicing/ui';
+import { BatchStatusBadge, Money, StatCards } from '@/components/invoicing/ui';
 import type { BillingBatch, BatchStatus } from '@/lib/invoicing/types';
 
 const EDIT_STATUSES: BatchStatus[] = ['Draft', 'Generated', 'Validated', 'Pending Approval', 'Needs Correction', 'Rejected', 'Approved', 'Sent to Finance', 'Reconciliation Open', 'Closed'];
+
+// Icon + colour for each batch status, used in the status summary strip.
+const STATUS_META: Record<BatchStatus, { tint: string; icon: IconName }> = {
+  'Draft': { tint: 'tint-info', icon: 'edit' },
+  'Generated': { tint: 'tint-info', icon: 'invoicing' },
+  'Validated': { tint: 'tint-blue', icon: 'check' },
+  'Pending Approval': { tint: 'tint-orange', icon: 'alert' },
+  'Needs Correction': { tint: 'tint-orange', icon: 'alert' },
+  'Rejected': { tint: 'tint-red', icon: 'close' },
+  'Approved': { tint: 'tint-green', icon: 'check' },
+  'Sent to Finance': { tint: 'tint-info', icon: 'upload' },
+  'Approved By Finance': { tint: 'tint-green', icon: 'check' },
+  'Reconciliation Open': { tint: 'tint-blue', icon: 'check' },
+  'Closed': { tint: 'tint-info', icon: 'check' },
+};
 
 function EditBatchForm({ batch, onSave, onCancel }: { batch: BillingBatch; onSave: (b: BillingBatch) => void; onCancel: () => void }) {
   const [code, setCode] = useState(batch.code);
@@ -59,6 +74,12 @@ export default function BatchesPage() {
 
   const editing = batches.find((b) => b.id === editingId) ?? null;
 
+  // Summary = count of bill files per status (only statuses that are present), in workflow order.
+  const statusStats = EDIT_STATUSES
+    .map((st) => ({ st, n: rows.filter((b) => b.status === st).length }))
+    .filter((x) => x.n > 0)
+    .map((x) => ({ icon: STATUS_META[x.st].icon, tint: STATUS_META[x.st].tint, value: x.n, label: x.st }));
+
   const remove = (id: string) => {
     if (typeof window !== 'undefined' && window.confirm('Delete this billing batch? This cannot be undone.')) {
       setBatches((list) => list.filter((b) => b.id !== id));
@@ -91,12 +112,7 @@ export default function BatchesPage() {
 
       {editing && <EditBatchForm key={editing.id} batch={editing} onSave={saveEdit} onCancel={() => setEditingId(null)} />}
 
-      <div className="totals-bar">
-        <div><b>{rows.length}</b><span>Bill files</span></div>
-        <div><b>{masters.length}</b><span>Billing months</span></div>
-        <div><b>{rows.reduce((s, b) => s + b.lineIds.length, 0)}</b><span>Invoices</span></div>
-        <div><b>{rows.filter((b) => b.status === 'Pending Approval').length}</b><span>Pending approval</span></div>
-      </div>
+      {statusStats.length > 0 && <StatCards stats={statusStats} />}
 
       {view === 'masters' ? (
         <div style={{ display: 'grid', gap: 14 }}>

@@ -508,8 +508,9 @@ stateDiagram-v2
 - **Review & Approve** the status update (maker–checker) → commits `Paid`.
 
 ### 13.6 Vendor Notification (F13, F18)
-- **Grouped per vendor:** because Finance pays each vendor in **one combined payment (one UTR)**, the manual list is **grouped by vendor** — each vendor gets **one consolidated email** listing all their paid bills, the **combined net**, and the **single UTR** (never one email per bill).
-- **Manual send:** post-reconcile, select paid vendors (by default only those **not yet notified**) → preview AI-composed message (configurable template) → send one email per vendor → logged.
+- **Grouped per vendor:** because Finance pays each vendor in **one combined payment (one UTR)**, the manual list is **grouped by vendor** — each vendor gets **one consolidated payment-advice email** covering **all invoices paid that month** (never one email per bill).
+- **Payment-advice email content (mirrors the finance report):** a clean, branded email with a summary (payment date, mode, **single UTR**, net) and a **Payment Details** table — per invoice a **Dr** line with the invoice **Amount** (basic+GST combined), plus a **Cr** `-TDS` line, closing with **Gross total → less TDS → Net amount paid**. Columns: *Payment Date · Particulars · Invoice Ref No · Amount · Dr/Cr · Total Amount Paid · UTR No* (two amount columns mirror the finance report: line Amount with Dr/Cr, and the net **Total Amount Paid**).
+- **Manual send:** post-reconcile, select paid vendors (by default only those **not yet notified**) → **preview the actual email** per vendor → send one consolidated email per vendor → logged.
 - **Scheduled send:** configure **frequency (daily / weekly / monthly)** + **time & timezone**; the scheduler auto-scans `Paid`, not-yet-notified bills, sends one consolidated email per vendor, and marks them notified.
 - A **notification status** column (Not Notified / Sent / Failed) is shown on records; failed sends can be retried.
 
@@ -520,8 +521,8 @@ stateDiagram-v2
 - KPI tiles + charts (see §16).
 
 ### 13.9 Configuration
-- **Paying Entity master (F4):** add/edit entities — code, legal name, country, currency; used in upload selection and entity-wise reports.
-- **Categories** and **notification templates** management.
+- **Paying Entity master (F4):** **add / edit / delete** entities — code, legal name, country, currency (icon actions); used in upload selection and entity-wise reports.
+- **Expense categories:** **add / edit (inline rename) / delete** (icon actions); plus **notification templates** management.
 - **Notification schedule (F18):** enable/disable scheduled vendor emails; set frequency (daily / weekly / monthly), time & timezone.
 
 ### 13.10 Reports (F19)

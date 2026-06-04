@@ -4,6 +4,7 @@ import './invoicing.css';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Icon, type IconName } from '@/components/ui/Icon';
+import { billingBatches, billingLines } from '@/lib/invoicing/mockData';
 
 const SUBNAV: { href: string; label: string; icon: IconName }[] = [
   { href: '/invoicing', label: 'Overview', icon: 'dashboard' },
@@ -21,6 +22,13 @@ export default function InvoicingLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
   const isActive = (href: string) => (href === '/invoicing' ? pathname === '/invoicing' : pathname.startsWith(href));
 
+  // At-a-glance attention counts surfaced as badges on the relevant tabs.
+  const badges: Record<string, number> = {
+    '/invoicing/batches': billingBatches.filter((b) => b.status === 'Pending Approval').length,
+    '/invoicing/reconciliation': billingBatches.filter((b) => b.status === 'Reconciliation Open').length,
+    '/invoicing/notifications': billingLines.filter((l) => l.paymentStatus === 'Paid' && l.notificationStatus !== 'Sent').length,
+  };
+
   return (
     <div className="container">
       <div className="crumbs">
@@ -36,13 +44,18 @@ export default function InvoicingLayout({ children }: { children: React.ReactNod
         </div>
       </div>
 
-      <nav className="inv-subnav">
-        {SUBNAV.map((item) => (
-          <Link key={item.href} href={item.href} className={isActive(item.href) ? 'active' : ''}>
-            <Icon name={item.icon} size={16} />
-            {item.label}
-          </Link>
-        ))}
+      <nav className="inv-subnav" aria-label="Invoicing sections">
+        {SUBNAV.map((item) => {
+          const active = isActive(item.href);
+          const badge = badges[item.href];
+          return (
+            <Link key={item.href} href={item.href} className={active ? 'active' : ''} aria-current={active ? 'page' : undefined} title={item.label}>
+              <Icon name={item.icon} size={17} />
+              <span>{item.label}</span>
+              {badge ? <span className="inv-tab__badge" aria-label={`${badge} need attention`}>{badge}</span> : null}
+            </Link>
+          );
+        })}
       </nav>
 
       {children}
