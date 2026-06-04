@@ -38,3 +38,7 @@ Thumbs.db
 # Sensitive source data — real sample invoices & finance payment report.
 # Excluded from git for data privacy (real UTRs, amounts, vendor & internal email data).
 Data/
+
+# Real desk-allocation tracker — contains actual employee names, IDs & seating (PII).
+# Used only to shape anonymised mock data; never committed.
+Desk Allocation Details.xlsx

@@ -7,7 +7,7 @@ import { moduleBySlug } from '@/lib/navigation';
  * Slugs that have their OWN dedicated route tree (app/<slug>/*) must be excluded —
  * otherwise this catch-all prerenders a "Coming soon" placeholder that shadows the real module.
  */
-const DEDICATED_ROUTES = new Set(['invoicing', 'travel']);
+const DEDICATED_ROUTES = new Set(['invoicing', 'travel', 'workspace']);
 export function generateStaticParams() {
   return Object.keys(moduleBySlug)
     .filter((m) => !DEDICATED_ROUTES.has(m))
