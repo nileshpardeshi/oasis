@@ -2,11 +2,15 @@ import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
 import { moduleBySlug } from '@/lib/navigation';
 
-/** Pre-render a static page for each known module slug. */
+/**
+ * Pre-render a static page for each known module slug.
+ * Slugs that have their OWN dedicated route tree (app/<slug>/*) must be excluded —
+ * otherwise this catch-all prerenders a "Coming soon" placeholder that shadows the real module.
+ */
+const DEDICATED_ROUTES = new Set(['invoicing', 'travel']);
 export function generateStaticParams() {
-  // 'invoicing' has its own dedicated route tree (app/invoicing/*), so exclude it here.
   return Object.keys(moduleBySlug)
-    .filter((m) => m !== 'invoicing')
+    .filter((m) => !DEDICATED_ROUTES.has(m))
     .map((module) => ({ module }));
 }
 
