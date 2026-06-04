@@ -18,11 +18,10 @@ export default function Sidebar({ onNavigate }: SidebarProps) {
   return (
     <aside className="sidebar">
       <div className="sidebar__brand">
-        <div className="brandmark">O</div>
-        <div className="brand__text">
-          <span className="brand__name">OASIS</span>
-          <span className="brand__sub">Admin &amp; Service Intelligence</span>
-        </div>
+        <Link href="/" className="sidebar__logo-wrap" onClick={onNavigate} aria-label="OASIS home">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="sidebar__logo" src="/oasis-logo.png" alt="OASIS — Opus Administration & Service Intelligence Suite" />
+        </Link>
       </div>
 
       <nav className="nav">

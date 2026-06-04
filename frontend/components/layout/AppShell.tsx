@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
+import IntroSplash from './IntroSplash';
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   // navOpen  -> mobile drawer open
@@ -24,6 +25,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className={className}>
+      <IntroSplash />
       <Sidebar onNavigate={() => setNavOpen(false)} />
       <div className="overlay" onClick={() => setNavOpen(false)} />
       <div className="main">

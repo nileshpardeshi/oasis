@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
 
 interface TopbarProps {
@@ -13,11 +12,6 @@ export default function Topbar({ onToggle }: TopbarProps) {
       <button className="icon-btn" onClick={onToggle} aria-label="Toggle menu" type="button">
         <Icon name="menu" strokeWidth={2} />
       </button>
-
-      <Link className="topbar__logo" href="/" aria-label="OASIS home">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/logo.png" alt="OASIS — Opus Administration & Service Intelligence Suite" />
-      </Link>
 
       <div className="search">
         <Icon name="search" size={18} strokeWidth={2} />
