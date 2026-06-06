@@ -8,8 +8,7 @@ import { noShowAlerts, governanceFindings } from '@/lib/workspace/mockData';
 
 const SUBNAV: { href: string; label: string; icon: IconName }[] = [
   { href: '/workspace', label: 'Overview', icon: 'dashboard' },
-  { href: '/workspace/floor', label: 'Floor', icon: 'map' },
-  { href: '/workspace/studio', label: 'Studio', icon: 'grid' },
+  { href: '/workspace/floor', label: 'Floor Plan', icon: 'map' },
   { href: '/workspace/booking', label: 'Booking', icon: 'seat' },
   { href: '/workspace/occupancy', label: 'Occupancy', icon: 'crosshair' },
   { href: '/workspace/search', label: 'Search', icon: 'search' },

@@ -13,7 +13,7 @@ export default function StudioImportPage() {
   return (
     <>
       <div className="ws-toolbar">
-        <Link className="btn btn--ghost btn--sm" href="/workspace/studio"><Icon name="arrowLeft" size={15} /> Back to Studio</Link>
+        <Link className="btn btn--ghost btn--sm" href="/workspace/floor"><Icon name="arrowLeft" size={15} /> Back to Floor Plan</Link>
       </div>
 
       <ScopeNotice>AI floor-plan import is assistive. Every detected desk, room and zone lands in a <b>review queue</b> — nothing is published to the live plan until a facility manager approves it.</ScopeNotice>

@@ -99,8 +99,8 @@ export default function WorkspaceOverview() {
       <div className="grid-modules">
         <Link className="module" href="/workspace/floor">
           <div className="module__icon tint-blue"><Icon name="map" size={20} /></div>
-          <div className="module__title">Interactive floor</div>
-          <div className="module__desc">Movie-seat view — click a desk to allocate or book.</div>
+          <div className="module__title">Floor plan</div>
+          <div className="module__desc">Interactive seat map — click a seat to inspect, book or allocate.</div>
           <div className="module__open">Open <Icon name="chevronRight" size={14} /></div>
         </Link>
         <Link className="module" href="/workspace/booking">
@@ -109,10 +109,10 @@ export default function WorkspaceOverview() {
           <div className="module__desc">Hot-desk booking with sit-near-team suggestions.</div>
           <div className="module__open">Open <Icon name="chevronRight" size={14} /></div>
         </Link>
-        <Link className="module" href="/workspace/studio">
+        <Link className="module" href="/workspace/allocation">
           <div className="module__icon tint-orange"><Icon name="grid" size={20} /></div>
-          <div className="module__title">Floor-Plan Studio</div>
-          <div className="module__desc">Design layouts — drag-drop desks, zones, rooms.</div>
+          <div className="module__title">Allocation register</div>
+          <div className="module__desc">Live desk register — seat, type, drawer key, occupant, group &amp; account.</div>
           <div className="module__open">Open <Icon name="chevronRight" size={14} /></div>
         </Link>
         <Link className="module" href="/workspace/heatmap">
