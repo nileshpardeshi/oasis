@@ -609,7 +609,7 @@ export const agentSuggestions: AgentSuggestion<Record<string, unknown>>[] = [
 
 // ---------- conversational, notifications, executive ----------
 export const chatSeed: ChatMessage[] = [
-  { id: 'cm-0', role: 'assistant', text: 'Hi! I can book desks, find people, and answer workspace questions. Try "Book a desk tomorrow near my team".', at: TODAY + 'T09:00:00+05:30', actions: [{ label: 'Book a desk', href: '/workspace/booking' }, { label: 'Find a colleague', href: '/workspace/search' }] },
+  { id: 'cm-0', role: 'assistant', text: 'Hi! I can book desks, find people, and answer workspace questions. Try "Book a desk tomorrow near my team".', at: TODAY + 'T09:00:00+05:30', actions: [{ label: 'Book a desk', href: '/workspace/booking' }, { label: 'Find a colleague', href: '/workspace/booking?tab=find' }] },
 ];
 export const notifications: Notification[] = [
   { id: 'nt-1', recipientEmployeeId: 'emp-010', kind: 'booking', channel: 'teams', subject: 'Booking confirmed — today', status: 'delivered', read: false, at: TODAY + 'T09:05:00+05:30' },

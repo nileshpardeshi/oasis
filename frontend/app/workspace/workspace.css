@@ -200,6 +200,7 @@
 .fed-help { margin: 0; padding-left: 18px; font-size: 12.5px; color: var(--text-muted); line-height: 1.7; }
 .fed-numctl { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); white-space: nowrap; }
 .fed-num-prefix { width: 56px; min-width: 0; height: 30px; }
+.fed-num-start { width: 52px; min-width: 0; height: 30px; }
 .fed-swatches { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 .fed-swatch { width: 26px; height: 26px; border-radius: 7px; border: 1px solid rgba(0,0,0,.12); cursor: pointer; padding: 0; }
 .fed-color { width: 30px; height: 26px; border-radius: 7px; border: 1px solid var(--border-strong); cursor: pointer; padding: 0; background: none; }

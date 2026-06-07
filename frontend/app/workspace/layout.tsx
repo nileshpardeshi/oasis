@@ -13,7 +13,6 @@ const SUBNAV: { href: string; label: string; icon: IconName; adminOnly?: boolean
   { href: '/workspace/booking', label: 'Booking', icon: 'seat' },
   { href: '/workspace/allocation', label: 'Allocation', icon: 'desk', adminOnly: true },
   { href: '/workspace/occupancy', label: 'Occupancy', icon: 'crosshair' },
-  { href: '/workspace/search', label: 'Search', icon: 'search' },
   { href: '/workspace/rooms', label: 'Rooms', icon: 'meetingRoom' },
   { href: '/workspace/heatmap', label: 'Intelligence', icon: 'heatmap' },
   { href: '/workspace/masters', label: 'Masters', icon: 'building' },

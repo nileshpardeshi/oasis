@@ -1,14 +1,16 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Icon } from '@/components/ui/Icon';
 import FloorPlan from '@/components/workspace/FloorCanvas';
-import { Legend } from '@/components/workspace/ui';
+import { Legend, StatCards, ScopeNotice } from '@/components/workspace/ui';
 import {
   floors, getDesksByFloor, getZonesByFloor, getRoomsByFloor, getDesk, getEmployee, getArea,
-  serviceLineName, accountName, bookings, currentUser, employees, addDays, nowISO, fmtDate, teamSeatingSuggestions,
+  serviceLineName, accountName, bookings, currentUser, employees, desks, serviceLines, getMyBookings, scopedSearch,
+  addDays, nowISO, fmtDate, teamSeatingSuggestions,
 } from '@/lib/workspace/mockData';
+import type { Employee } from '@/lib/workspace/types';
 
 type BState = 'available' | 'mine' | 'taken' | 'inuse' | 'noshow' | 'restricted';
 type SlotKey = 'full' | 'morning' | 'afternoon' | 'custom';
@@ -41,7 +43,7 @@ function QrMock({ value, size = 116 }: { value: string; size?: number }) {
   return <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ background: '#fff', borderRadius: 8, display: 'block' }}>{cells}{finder(0, 0)}{finder(n - 7, 0)}{finder(0, n - 7)}</svg>;
 }
 
-export default function BookingPage() {
+function BookDesk() {
   const today = nowISO().slice(0, 10);
   const isAdmin = ADMIN_ROLES.includes(currentUser.role);
   const [bookingFor, setBookingFor] = useState(currentUser.employeeId);
@@ -296,6 +298,102 @@ export default function BookingPage() {
           )}
         </div>
       </div>
+    </>
+  );
+}
+
+/* ---------------- Find people (people + desk wayfinding) ---------------- */
+function FindPeople({ onGoBook }: { onGoBook: () => void }) {
+  const today = nowISO().slice(0, 10);
+  const [q, setQ] = useState('');
+  const [sl, setSl] = useState('all');
+  const [floorId, setFloorId] = useState(floors[0].id);
+  const [sel, setSel] = useState<string | null>(null);
+
+  const people = useMemo(() => scopedSearch(q, currentUser).filter((e) => sl === 'all' || e.serviceLineId === sl), [q, sl]);
+  const deskHit = useMemo(() => { const t = q.trim().toLowerCase().replace(/\s+/g, ''); if (t.length < 3) return undefined; return desks.find((d) => d.deskNo.toLowerCase().replace(/\s+/g, '') === t); }, [q]);
+
+  const seatOf = (e: Employee) => {
+    const tb = getMyBookings(e.id).find((b) => b.deskId && b.startsAt.slice(0, 10) === today && ['booked', 'checked_in', 'held'].includes(b.status));
+    if (tb?.deskId) return { deskId: tb.deskId, label: `Booked ${getDesk(tb.deskId)?.deskNo} today`, kind: 'booking' as const };
+    if (e.homeDeskId) return { deskId: e.homeDeskId, label: `Fixed seat ${getDesk(e.homeDeskId)?.deskNo}`, kind: 'fixed' as const };
+    return undefined;
+  };
+  const presence = (e: Employee) => (e.status === 'remote' ? { t: 'Remote', tone: 'ws-muted' } : e.status === 'on_leave' ? { t: 'On leave', tone: 'ws-warn' } : { t: 'In office', tone: 'ws-ok' });
+
+  const selEmp = sel ? getEmployee(sel) : null;
+  const selSeat = selEmp ? seatOf(selEmp) : undefined;
+  const highlight = deskHit ? [deskHit.id] : selSeat?.deskId ? [selSeat.deskId] : [];
+  const locate = (e: Employee) => { const s = seatOf(e); setSel(e.id); if (s?.deskId) { const d = getDesk(s.deskId); if (d) setFloorId(d.floorId); } };
+  useEffect(() => { if (deskHit) { setFloorId(deskHit.floorId); setSel(null); } }, [deskHit]);
+
+  const floor = floors.find((f) => f.id === floorId)!;
+
+  return (
+    <>
+      <ScopeNotice>People-location is privacy-scoped — results respect each colleague&apos;s visibility (team / project) &amp; opt-outs; every lookup is audited.</ScopeNotice>
+      <div className="ws-toolbar">
+        <div className="field" style={{ flex: '1 1 300px' }}><label>Find a colleague or desk</label>
+          <input className="input" style={{ width: '100%' }} placeholder="Name, emp-id, email… or a desk no (e.g. WS 214)" value={q} onChange={(e) => { setQ(e.target.value); setSel(null); }} />
+        </div>
+        <div className="field"><label>Service line</label><select className="select" value={sl} onChange={(e) => setSl(e.target.value)}><option value="all">All</option>{serviceLines.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></div>
+        <div className="field"><label>Floor</label><select className="select" value={floorId} onChange={(e) => setFloorId(e.target.value)}>{floors.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select></div>
+      </div>
+
+      <StatCards stats={[
+        { icon: 'search', tint: 'tint-blue', value: people.length, label: 'People matched' },
+        { icon: 'seat', tint: 'tint-info', value: people.filter((e) => seatOf(e)).length, label: 'Located' },
+        { icon: 'check', tint: 'tint-green', value: people.filter((e) => e.status === 'active').length, label: 'In office today' },
+        { icon: 'lock', tint: 'tint-orange', value: q ? '✓' : '—', label: 'Privacy-scoped', small: true },
+      ]} />
+
+      {deskHit && <div className="reco review" style={{ marginTop: 0 }}><Icon name="crosshair" size={14} /> Desk <b>{deskHit.deskNo}</b> · {getArea(deskHit.areaId ?? '')?.name ?? serviceLineName(deskHit.serviceLineId)} — {deskHit.occupantName ?? 'Vacant'}. Highlighted on the plan.</div>}
+
+      <div className="ws-split">
+        <div>
+          <FloorPlan key={floorId} floor={floor} desks={getDesksByFloor(floorId)} zones={getZonesByFloor(floorId)} rooms={getRoomsByFloor(floorId)} mode="search" highlightDeskIds={highlight} selectedDeskId={selSeat?.deskId} />
+        </div>
+        <div className="ws-inspector" style={{ maxHeight: 620, overflowY: 'auto' }}>
+          <div className="section-title" style={{ margin: '0 0 8px' }}>Results</div>
+          {people.length === 0 && <div className="sub-hint">{q ? 'No visible matches for your access scope.' : 'Type a name, emp-id, email or desk number.'}</div>}
+          <div className="al-people">
+            {people.slice(0, 25).map((e) => {
+              const s = seatOf(e); const pr = presence(e);
+              return (
+                <button key={e.id} className={'al-person' + (sel === e.id ? ' on' : '')} onClick={() => locate(e)}>
+                  <span style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6 }}><span className="al-person__nm">{e.name}</span><span className={'ws-pill ' + pr.tone}>{pr.t}</span></span>
+                  <span className="al-person__sub">{e.title} · {serviceLineName(e.serviceLineId)}{e.accountId ? ` · ${accountName(e.accountId)}` : ''}</span>
+                  <span className="al-person__sub">{s ? s.label : 'Hot-desks — no fixed seat'}</span>
+                </button>
+              );
+            })}
+          </div>
+          {selEmp && (
+            <div className="reco ok" style={{ marginTop: 10 }}>
+              <b>{selEmp.name}</b> — {selSeat ? selSeat.label : 'no fixed seat (hot-desks)'}.
+              <div style={{ display: 'flex', gap: 8, marginTop: 8 }}><button className="btn btn--primary btn--sm" onClick={onGoBook}><Icon name="seat" size={14} /> Book near {selEmp.name.split(' ')[0]}</button></div>
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}
+
+export default function BookingPage() {
+  const [tab, setTab] = useState<'book' | 'find'>('book');
+  useEffect(() => { try { if (new URLSearchParams(window.location.search).get('tab') === 'find') setTab('find'); } catch { /* ignore */ } }, []);
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
+        <div className="seg">
+          <button className={tab === 'book' ? 'active' : ''} onClick={() => setTab('book')}><Icon name="seat" size={14} /> Book a desk</button>
+          <button className={tab === 'find' ? 'active' : ''} onClick={() => setTab('find')}><Icon name="search" size={14} /> Find people</button>
+        </div>
+        <span style={{ flex: 1 }} />
+        <Link className="btn btn--ghost btn--sm" href="/workspace/booking/my"><Icon name="calendar" size={15} /> My schedule</Link>
+      </div>
+      {tab === 'book' ? <BookDesk /> : <FindPeople onGoBook={() => setTab('book')} />}
     </>
   );
 }

@@ -331,22 +331,25 @@ function Areas() {
   const [areaSel, setAreaSel] = useState(areas.find((a) => a.floorId === floors[0].id)?.id ?? areas[0].id);
   const [alloc, setAlloc] = useState<Record<string, { sl: string; mode: DMode }>>({});
   const [saved, setSaved] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
 
   const baseMode = (d: Desk): DMode => (d.deskType === 'fixed' ? 'fixed' : 'flexible');
   const ownerOf = (d: Desk) => (alloc[d.id] ? alloc[d.id].sl : (d.serviceLineId ?? ''));
   const modeOf = (d: Desk): DMode => (alloc[d.id] ? alloc[d.id].mode : baseMode(d));
   const slHex = (id: string) => serviceLines.find((s) => s.id === id)?.colorHex ?? '#64748b';
-  const eligible = (d: Desk) => d.deskKind === 'workstation' && (ownerOf(d) === '' || ownerOf(d) === selSL); // can't touch another line's desks
+  // allocatable = a workstation that is the selected line's own, unassigned, OR a vacant desk (free to reassign).
+  // A desk OCCUPIED by another service line is locked (you can't take someone else's seat).
+  const eligible = (d: Desk) => d.deskKind === 'workstation' && (ownerOf(d) === selSL || ownerOf(d) === '' || d.isVacant);
 
   const onFloor = getDesksByFloor(floorId);
   const setMany = (ids: string[], val: { sl: string; mode: DMode }) => { setAlloc((p) => { const n = { ...p }; ids.forEach((id) => { n[id] = val; }); return n; }); setSaved(false); };
-  const paint = (ids: string[]) => setMany(ids.filter((id) => { const d = getDesk(id); return !!d && eligible(d); }), { sl: selSL, mode });
+  const paint = (ids: string[]) => { setMany(ids.filter((id) => { const d = getDesk(id); return !!d && eligible(d); }), { sl: selSL, mode }); setNote(null); };
 
   const onDesk = (id: string) => {
     const d = getDesk(id); if (!d || d.deskKind !== 'workstation') return;
-    if (ownerOf(d) && ownerOf(d) !== selSL) return; // locked — belongs to another service line
+    if (!eligible(d)) { setNote(`${d.deskNo} is occupied by ${serviceLineName(d.serviceLineId)} — locked. You can only allocate vacant desks.`); return; }
     const owned = ownerOf(d) === selSL && modeOf(d) === mode;
-    setMany([id], owned ? { sl: '', mode } : { sl: selSL, mode });
+    setMany([id], owned ? { sl: '', mode } : { sl: selSL, mode }); setNote(null);
   };
 
   const owned = desks.filter((d) => ownerOf(d) === selSL);
@@ -355,10 +358,16 @@ function Areas() {
 
   const hex = slHex(selSL);
   const deskColors: Record<string, string> = {};
-  onFloor.forEach((d) => { const o = ownerOf(d); deskColors[d.id] = o === selSL ? (modeOf(d) === 'fixed' ? hex : FLEX_COLOR) : o ? '#d3d9e2' : '#eef1f5'; });
+  onFloor.forEach((d) => {
+    const o = ownerOf(d);
+    if (o === selSL) deskColors[d.id] = modeOf(d) === 'fixed' ? hex : FLEX_COLOR;
+    else if (o && !d.isVacant) deskColors[d.id] = '#d3d9e2';       // locked — occupied by another line
+    else if (d.isVacant) deskColors[d.id] = '#dff0e6';            // vacant → available to allocate
+    else deskColors[d.id] = '#eef1f5';                            // unassigned
+  });
 
   const slName = serviceLineName(selSL);
-  const LEGEND = [{ label: `${slName} · Fixed`, color: hex }, { label: 'Flexible (bookable)', color: FLEX_COLOR }, { label: 'Other line · locked', color: '#d3d9e2' }, { label: 'Unassigned', color: '#eef1f5' }];
+  const LEGEND = [{ label: `${slName} · Fixed`, color: hex }, { label: 'Flexible (bookable)', color: FLEX_COLOR }, { label: 'Available to allocate', color: '#dff0e6' }, { label: 'Locked · in use by other line', color: '#d3d9e2' }];
   const areaDesks = (aid: string, freeOnly: boolean) => onFloor.filter((d) => eligible(d) && d.areaId === aid && (!freeOnly || d.isVacant)).map((d) => d.id);
   const slDeskCount = (id: string) => desks.filter((d) => ownerOf(d) === id).length;
   const total = owned.length || 1;
@@ -405,11 +414,12 @@ function Areas() {
           <div className="bk-viewbar">
             <div className="field"><label>Floor</label><select className="select" value={floorId} onChange={(e) => { setFloorId(e.target.value); setAreaSel(areas.find((a) => a.floorId === e.target.value)?.id ?? areaSel); }}>{floors.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}</select></div>
             <span className="spacer" />
-            <span className="fed-active">Drag a box to select many · click to toggle one · painting as <b>{mode}</b></span>
+            <span className="fed-active"><b>Click</b> a desk to add/remove · <b>drag a box</b> for many · painting as <b>{mode}</b></span>
           </div>
+          {note && <div className="reco review" style={{ marginTop: 0, marginBottom: 10 }}><Icon name="lock" size={14} /> {note}</div>}
           <FloorPlan key={floorId + selSL} floor={floors.find((f) => f.id === floorId)!} desks={onFloor} zones={getZonesByFloor(floorId)} rooms={getRoomsByFloor(floorId)} mode="alloc" deskColors={deskColors} onSelectDesk={onDesk} onMarquee={paint} />
           <Legend items={LEGEND} />
-          <p className="sub-hint" style={{ marginTop: 8 }}><Icon name="info" size={13} /> <b>Drag a selection box</b> to allocate many desks at once (right-drag to pan). Desks owned by another service line are <b>locked</b>. Fixed = {slName} colour, Flexible (bookable) = orange.</p>
+          <p className="sub-hint" style={{ marginTop: 8 }}><Icon name="info" size={13} /> <b>Single-click</b> a desk to add/remove it, or <b>drag a box</b> to allocate many at once (right-drag to pan). You can allocate any <b>vacant</b> desk; desks in use by another line are locked. Fixed = {slName} colour, Flexible (bookable) = orange.</p>
         </div>
       </div>
 

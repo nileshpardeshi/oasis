@@ -45,9 +45,7 @@ export default function FloorPlanPage() {
           </div>
         </div>
         <div className="spacer" />
-        {mode === 'view' ? (
-          <Link className="btn btn--primary btn--sm" href="/workspace/booking"><Icon name="seat" size={15} /> Book a desk</Link>
-        ) : (
+        {mode === 'edit' && (
           <Link className="btn btn--ghost btn--sm" href="/workspace/studio/import"><Icon name="robot" size={15} /> AI import plan</Link>
         )}
       </div>
@@ -85,13 +83,9 @@ export default function FloorPlanPage() {
                   <div className="sub-hint">Drawer / locker key · {sel.drawerKey ?? '—'}</div>
                   <div className="sub-hint">Extension · {sel.extNumber ?? '—'}</div>
                   <div style={{ display: 'flex', gap: 8, marginTop: 8 }}><DeskTypeBadge type={sel.deskType} /></div>
-                  <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
-                    <Link className="btn btn--primary btn--sm" href="/workspace/booking">Book</Link>
-                    <Link className="btn btn--ghost btn--sm" href="/workspace/allocation">Allocate</Link>
-                  </div>
                 </>
               ) : (
-                <div className="sub-hint"><Icon name="crosshair" size={14} /> Click a seat on the plan to see who sits there, its drawer key &amp; extension, and book or allocate it. Switch to <b>Edit layout</b> to design the floor.</div>
+                <div className="sub-hint"><Icon name="crosshair" size={14} /> Click a seat on the plan to see who sits there, its drawer key &amp; extension. Switch to <b>Edit layout</b> to design the floor.</div>
               )}
             </div>
           </div>
