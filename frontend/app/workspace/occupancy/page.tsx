@@ -76,7 +76,7 @@ export default function OccupancyPage() {
         { icon: 'alert', tint: 'tint-red', value: count('no_show'), label: 'No-show' },
       ]} />
 
-      <FloorPlan floor={floor} desks={getDesksByFloor(floorId)} zones={getZonesByFloor(floorId)} rooms={getRoomsByFloor(floorId)} mode="occupancy" liveStatus={live} showMinimap />
+      <FloorPlan floor={floor} desks={getDesksByFloor(floorId)} zones={getZonesByFloor(floorId)} rooms={getRoomsByFloor(floorId)} mode="occupancy" liveStatus={live} />
       <Legend items={LEGEND} />
       <p className="sub-hint" style={{ marginTop: 12 }}><Icon name="info" size={13} /> Top table = the planning view (capacity vs occupied vs vacant per phase) from the Main Data sheet. Below = live desk state from QR/manual check-in; no-shows auto-release after the grace window.</p>
     </>

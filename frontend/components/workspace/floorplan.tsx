@@ -16,7 +16,9 @@ import { deskStateColor, heatColor } from '@/lib/workspace/mockData';
 import { SAMPLE_FLOOR } from '@/lib/workspace/floorDesign';
 import type { Floor, SpaceElement, Desk, Zone, MeetingRoom, DeskState, OccupancyState, HeatLevel, ElementKind, Point, Polygon } from '@/lib/workspace/types';
 
-export type FloorPlanMode = 'view' | 'design' | 'heatmap' | 'occupancy' | 'search';
+export type FloorPlanMode = 'view' | 'design' | 'heatmap' | 'occupancy' | 'search' | 'booking' | 'alloc';
+export type BookingDeskState = 'available' | 'mine' | 'taken' | 'inuse' | 'noshow' | 'restricted';
+const BOOKING_FILL: Record<BookingDeskState, string> = { available: '#86efac', mine: '#93c5fd', taken: '#cbd5e1', inuse: '#5eead4', noshow: '#fca5a5', restricted: '#e8edf3' };
 
 export interface FloorPlanProps {
   floor: Floor;
@@ -26,6 +28,8 @@ export interface FloorPlanProps {
   rooms?: MeetingRoom[];
   mode?: FloorPlanMode;
   liveStatus?: Record<string, DeskState | OccupancyState>;
+  bookingState?: Record<string, BookingDeskState>;
+  deskColors?: Record<string, string>;
   heat?: Record<string, HeatLevel>;
   highlightDeskIds?: string[];
   selectedDeskId?: string;
@@ -40,6 +44,7 @@ export interface FloorPlanProps {
   onMoveDesk?: (id: string, pos: Point) => void;
   onAddElement?: (kind: ElementKind, pos: Point) => void;
   onDrawZone?: (poly: Polygon) => void;
+  onMarquee?: (ids: string[]) => void; // drag-box multi-select (returns desk ids inside the box)
 }
 
 // desk-pod geometry inside a work neighbourhood
@@ -91,10 +96,10 @@ function chairsAround(cx: number, cy: number, r: number, n: number) {
 
 export default function FloorPlan(props: FloorPlanProps) {
   const {
-    floor, desks, mode = 'view', liveStatus, heat,
+    floor, desks, mode = 'view', liveStatus, bookingState, deskColors, heat,
     highlightDeskIds = [], selectedDeskId, showLabels = true,
     showMinimap = false, backgroundImageUrl, backgroundOpacity = 0.4, height = 600,
-    onSelectDesk, onMoveDesk,
+    onSelectDesk, onMoveDesk, onMarquee,
   } = props;
 
   const D = SAMPLE_FLOOR;
@@ -104,6 +109,10 @@ export default function FloorPlan(props: FloorPlanProps) {
   const [scale, setScale] = useState(1);
   const [pos, setPos] = useState<Point>({ x: 0, y: 0 });
   const [bgImg, setBgImg] = useState<HTMLImageElement | null>(null);
+  const [tip, setTip] = useState<{ x: number; y: number; text: string } | null>(null);
+  const [mq, setMq] = useState<{ x: number; y: number; w: number; h: number } | null>(null);
+  const mqStart = useRef<Point | null>(null);
+  const panRef = useRef<{ sx: number; sy: number; ox: number; oy: number } | null>(null);
   const highlightSet = new Set(highlightDeskIds);
 
   const { placed, counts } = useMemo(() => fillDesks(desks),
@@ -148,9 +157,34 @@ export default function FloorPlan(props: FloorPlanProps) {
     setPos({ x: pointer.x - mp.x * ns, y: pointer.y - mp.y * ns });
   };
 
+  // marquee (drag-box) multi-select + right-drag pan — only when onMarquee is supplied
+  const boardPt = () => { const s = stageRef.current; const p = s?.getPointerPosition(); if (!p) return null; return { x: (p.x - pos.x) / scale, y: (p.y - pos.y) / scale }; };
+  const onStageDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (!onMarquee) return;
+    if (e.evt.button === 2) { const p = stageRef.current?.getPointerPosition(); if (p) panRef.current = { sx: p.x, sy: p.y, ox: pos.x, oy: pos.y }; return; }
+    if (e.evt.button !== 0) return;
+    const t = e.target; const empty = t === t.getStage() || t.name() === 'bg' || t.name() === 'grid';
+    if (!empty) return; // clicking a desk → handled by its onClick
+    const c = boardPt(); if (c) { mqStart.current = c; setMq({ x: c.x, y: c.y, w: 0, h: 0 }); }
+  };
+  const onStageMove = () => {
+    if (panRef.current) { const p = stageRef.current?.getPointerPosition(); if (p) setPos({ x: panRef.current.ox + (p.x - panRef.current.sx), y: panRef.current.oy + (p.y - panRef.current.sy) }); return; }
+    if (mqStart.current) { const c = boardPt(); if (c) { const s = mqStart.current; setMq({ x: Math.min(s.x, c.x), y: Math.min(s.y, c.y), w: Math.abs(c.x - s.x), h: Math.abs(c.y - s.y) }); } }
+  };
+  const onStageUp = () => {
+    if (panRef.current) { panRef.current = null; return; }
+    if (mqStart.current && mq && onMarquee) {
+      const r = mq;
+      if (r.w > 4 || r.h > 4) onMarquee(placed.filter((pd) => { const cx = pd.x + DESK_W / 2, cy = pd.y + DESK_H / 2; return cx >= r.x && cx <= r.x + r.w && cy >= r.y && cy <= r.y + r.h; }).map((pd) => pd.desk.id));
+    }
+    mqStart.current = null; setMq(null);
+  };
+
   const deskFill = (d: Desk): string => {
     if (mode === 'heatmap') return heat?.[d.id] ? heatColor(heat[d.id]) : '#e5e7eb';
     if (mode === 'occupancy') return deskStateColor((liveStatus?.[d.id] as OccupancyState) ?? 'vacant');
+    if (mode === 'booking') return BOOKING_FILL[bookingState?.[d.id] ?? 'available'];
+    if (mode === 'alloc') return deskColors?.[d.id] ?? '#e8edf3';
     if (mode === 'search') return highlightSet.has(d.id) ? '#f7991f' : '#dbe3ec';
     return deskStateColor(d.deskState);
   };
@@ -166,9 +200,11 @@ export default function FloorPlan(props: FloorPlanProps) {
       </div>
 
       <Stage ref={stageRef} width={size.w} height={size.h} scaleX={scale} scaleY={scale} x={pos.x} y={pos.y}
-        draggable onWheel={onWheel}
+        draggable={!onMarquee} onWheel={onWheel}
+        onMouseDown={onStageDown} onMouseMove={onStageMove} onMouseUp={onStageUp} onMouseLeave={() => { panRef.current = null; if (mqStart.current) { mqStart.current = null; setMq(null); } }}
+        onContextMenu={(e) => { if (onMarquee) e.evt.preventDefault(); }}
         onDragEnd={(e) => { if (e.target === stageRef.current) setPos({ x: e.target.x(), y: e.target.y() }); }}
-        style={{ background: '#e9eef5' }}>
+        style={{ background: '#e9eef5', cursor: onMarquee ? 'crosshair' : undefined }}>
         <Layer>
           {/* slab */}
           <Rect x={0} y={0} width={D.width} height={D.height} fill="#fbfcfe" cornerRadius={14}
@@ -313,18 +349,22 @@ export default function FloorPlan(props: FloorPlanProps) {
                   draggable={mode === 'design'}
                   onClick={() => onSelectDesk?.(d.id)}
                   onTap={() => onSelectDesk?.(d.id)}
-                  onMouseEnter={(e) => { const s = e.target.getStage(); if (s && onSelectDesk) s.container().style.cursor = 'pointer'; }}
-                  onMouseLeave={(e) => { const s = e.target.getStage(); if (s) s.container().style.cursor = 'default'; }}
+                  onMouseEnter={(e) => { const s = e.target.getStage(); if (!s) return; if (onSelectDesk) s.container().style.cursor = 'pointer'; const p = s.getPointerPosition(); if (p) setTip({ x: p.x, y: p.y, text: d.deskNo + (d.occupantName ? ` · ${d.occupantName}` : '') }); }}
+                  onMouseMove={(e) => { const s = e.target.getStage(); const p = s?.getPointerPosition(); if (p) setTip((t) => (t ? { ...t, x: p.x, y: p.y } : t)); }}
+                  onMouseLeave={(e) => { const s = e.target.getStage(); if (s) s.container().style.cursor = 'default'; setTip(null); }}
                   onDragEnd={(e) => onMoveDesk?.(d.id, { x: e.target.x(), y: e.target.y() })}
                 />
-                {showLabels && scale > 1.05 && (
+                {showLabels && scale > 0.82 && (
                   <Text x={pd.x} y={pd.y + DESK_H / 2 - 4} width={DESK_W} align="center" text={d.deskNo.replace(/^WS\s*/, '').replace(/^(Cab|CU)\s*/, '')} fontSize={8} fill="#33415588" listening={false} />
                 )}
               </Group>
             );
           })}
+          {mq && <Rect x={mq.x} y={mq.y} width={mq.w} height={mq.h} fill="#06428122" stroke="#064281" strokeWidth={1.5} dash={[6, 4]} listening={false} />}
         </Layer>
       </Stage>
+
+      {tip && <div className="ws-tip" style={{ left: tip.x, top: tip.y }}>{tip.text}</div>}
 
       {showMinimap && (
         <div className="ws-minimap" aria-hidden>

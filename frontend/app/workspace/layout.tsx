@@ -4,12 +4,14 @@ import './workspace.css';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Icon, type IconName } from '@/components/ui/Icon';
-import { noShowAlerts, governanceFindings } from '@/lib/workspace/mockData';
+import { noShowAlerts, governanceFindings, currentUser } from '@/lib/workspace/mockData';
 
-const SUBNAV: { href: string; label: string; icon: IconName }[] = [
+const ADMIN_ROLES = ['admin', 'super_admin', 'facility_manager'];
+const SUBNAV: { href: string; label: string; icon: IconName; adminOnly?: boolean }[] = [
   { href: '/workspace', label: 'Overview', icon: 'dashboard' },
   { href: '/workspace/floor', label: 'Floor Plan', icon: 'map' },
   { href: '/workspace/booking', label: 'Booking', icon: 'seat' },
+  { href: '/workspace/allocation', label: 'Allocation', icon: 'desk', adminOnly: true },
   { href: '/workspace/occupancy', label: 'Occupancy', icon: 'crosshair' },
   { href: '/workspace/search', label: 'Search', icon: 'search' },
   { href: '/workspace/rooms', label: 'Rooms', icon: 'meetingRoom' },
@@ -25,6 +27,8 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
 
   const openNoShows = noShowAlerts.filter((a) => !a.resolved).length;
   const openFindings = governanceFindings.filter((f) => !f.resolved).length;
+  const isAdmin = ADMIN_ROLES.includes(currentUser.role);
+  const tabs = SUBNAV.filter((t) => !t.adminOnly || isAdmin);
   const badges: Record<string, number> = {
     '/workspace/occupancy': openNoShows,
     '/workspace/governance': openFindings,
@@ -46,7 +50,7 @@ export default function WorkspaceLayout({ children }: { children: React.ReactNod
       </div>
 
       <nav className="ws-subnav" aria-label="Workplace sections">
-        {SUBNAV.map((item) => {
+        {tabs.map((item) => {
           const active = isActive(item.href);
           const badge = badges[item.href];
           return (

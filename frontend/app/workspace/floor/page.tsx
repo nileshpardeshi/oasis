@@ -68,7 +68,7 @@ export default function FloorPlanPage() {
               <FloorPlan
                 floor={floor} desks={desks} zones={getZonesByFloor(floorId)} rooms={getRoomsByFloor(floorId)} elements={getElementsByFloor(floorId)}
                 mode="view" selectedDeskId={selId} onSelectDesk={setSelId}
-                showMinimap backgroundImageUrl={floor.bgImageUrl} backgroundOpacity={floor.bgOpacity}
+                backgroundImageUrl={floor.bgImageUrl} backgroundOpacity={floor.bgOpacity}
               />
               <Legend items={LEGEND} />
             </div>

@@ -43,7 +43,7 @@ export default function HeatmapPage() {
         { icon: 'crosshair', tint: 'tint-red', value: band('red'), label: 'Highly utilised' },
       ]} />
 
-      <FloorPlan floor={floor} desks={desks} zones={getZonesByFloor(floorId)} rooms={getRoomsByFloor(floorId)} mode="heatmap" heat={heat} showMinimap />
+      <FloorPlan floor={floor} desks={desks} zones={getZonesByFloor(floorId)} rooms={getRoomsByFloor(floorId)} mode="heatmap" heat={heat} />
       <Legend items={LEGEND} />
       <p className="sub-hint" style={{ marginTop: 12 }}><Icon name="info" size={13} /> Heatmap aggregates occupancy over the selected period (query-time rollup). AI flags under-utilised areas for consolidation (see Cost).</p>
     </>
